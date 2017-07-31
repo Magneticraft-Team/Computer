@@ -49,7 +49,7 @@ done
 
 echo "Linking"
 mipsel-none-elf-gcc ${linker_flags} -o out/${temp_o} ${compile_flags} ${compiled_files} -lgcc || `echo "Error linking" && exit 1`
-mipsel-none-elf-ar rcs out/lib.a ${compiled_files} || `echo "Error linking" && exit 1`
+mipsel-none-elf-ar rcs out/drivers.a ${compiled_files} || `echo "Error linking" && exit 1`
 
 echo "Finishing"
 mipsel-none-elf-objcopy -Obinary out/${temp_o} ${output} || `echo "Error finishing file" && exit 1`
