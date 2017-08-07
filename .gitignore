@@ -2,6 +2,7 @@
 CMakeLists.txt
 .idea
 cmake-build-debug
+gcc/
 
 # My scripts
 compile_*.sh

@@ -7,6 +7,8 @@
 
 /**
  * Original implementation: http://www.flipcode.com/archives/Simple_Malloc_Free_Functions.shtml
+ *
+ * Low level malloc implementation for stuff that doesn't use stdlib.h
  */
 
 #define USED 1

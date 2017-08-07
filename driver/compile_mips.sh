@@ -12,8 +12,13 @@ if ! type "mipsel-none-elf-objcopy" > /dev/null; then
     echo "Missing dependency MIPS objcopy utility"
     exit -1
 fi
+if ! type "mipsel-none-elf-ar" > /dev/null; then
+    echo "Missing dependency MIPS ar utility"
+    exit -1
+fi
 
-c_files="start.c api/motherboard.c api/monitor.c api/network.c api/disk_drive.c"
+api_files="api/motherboard.c api/monitor.c api/network.c api/disk_drive.c"
+c_files="start.c $api_files"
 asm_files="boot.asm"
 linker_script="linker.ld"
 temp_o="output.o"
@@ -22,6 +27,7 @@ linker_flags="-Wl,-T,$linker_script"
 compile_flags="-static -ffreestanding -G0 -g0 -Os -fno-zero-initialized-in-bss -fno-toplevel-reorder -fomit-frame-pointer -nostdlib -Wall -Wextra"
 
 compiled_files=""
+static_files=""
 
 if [ ! -e 'out' ]; then
     mkdir out
@@ -49,7 +55,14 @@ done
 
 echo "Linking"
 mipsel-none-elf-gcc ${linker_flags} -o out/${temp_o} ${compile_flags} ${compiled_files} -lgcc || `echo "Error linking" && exit 1`
-mipsel-none-elf-ar rcs out/drivers.a ${compiled_files} || `echo "Error linking" && exit 1`
+
+echo "Creating static lib"
+for i in ${api_files} ; do
+     name=`echo ${i} | sed -r 's/([^/]+\/)?([^/]+)\.\w+$/\2/g'`
+     static_files="$static_files out/$name.o"
+done
+mipsel-none-elf-ar rcs out/libDrivers.a ${static_files} || `echo "Error linking" && exit 1`
+echo "Created static lib using files: $static_files"
 
 echo "Finishing"
 mipsel-none-elf-objcopy -Obinary out/${temp_o} ${output} || `echo "Error finishing file" && exit 1`

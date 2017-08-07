@@ -5,6 +5,11 @@
 #ifndef DRIVER_PRINTF_H
 #define DRIVER_PRINTF_H
 
+/**
+ * Low level printf implementation for stuff that doesn't use stdio.h
+ * define USE_DEBUG_LOG to use game log instead the monitor to print text
+ */
+
 #include "api/motherboard.h"
 
 // List of variable arguments
