@@ -4,6 +4,7 @@
 
 #include "string.h"
 #include "assert.h"
+#include "stdlib.h"
 
 void *memchr(const void *str, int c, size_t n) {
     for (int i = 0; i < (int) n; i++) {
@@ -83,21 +84,21 @@ char *strchr(const char *str, int c) {
 int strcmp(const char *a, const char *b) {
     int i = 0;
     while (1) {
-        if (a[i] != b[i]) return 0;
+        if (a[i] != b[i]) return 1;
         if (a[i] == '\0') break;
         i++;
     }
-    return 1;
+    return 0;
 }
 
 int strncmp(const char *a, const char *b, size_t n) {
     int i = 0;
     while (1) {
-        if (a[i] != b[i]) return 0;
+        if (a[i] != b[i]) return 1;
         if (a[i] == '\0' || i >= (int) n) break;
         i++;
     }
-    return 1;
+    return 0;
 }
 
 int strcoll(const char *str1, const char *str2) {
@@ -208,7 +209,7 @@ size_t strspn(const char *str1, const char *str2) {
         }
     } while (str1[++i] != '\0');
 
-    return 0;
+    return (size_t) i;
 }
 
 char *strstr(const char *str1, const char *str2) {
@@ -266,4 +267,11 @@ char *strtok(char *str, const char *delim) {
         }
     } while (tokstr[++tokIndex] != '\0');
     return (char *) NULL;
+}
+
+char *strdup (const char *s) {
+    char *d = malloc (strlen (s) + 1);
+    if (d == NULL) return NULL;
+    strcpy (d,s);
+    return d;
 }

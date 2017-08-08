@@ -9,7 +9,7 @@
 #define va_list struct { int* _ptr; int _count; }
 
 // Initialization of the list, using the last argument of the function
-#define va_start(list, arg) list._ptr = (int*)(&ptr + 1); (list)._count = 0
+#define va_start(list, arg) list._ptr = (int*)(&arg + 1); (list)._count = 0
 
 // Retrieves a element from the list
 #define va_arg(list, arg) ((arg)*((list)._ptr + (list)._count++))

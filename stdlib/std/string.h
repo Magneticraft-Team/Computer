@@ -49,6 +49,8 @@ char *strstr(const char *haystack, const char *needle);
 
 char *strtok(char *str, const char *delim);
 
+char *strdup(const char * str);
+
 //size_t strxfrm(char *dest, const char *src, size_t n);
 
 #endif //COMPUTER_STRING_H
