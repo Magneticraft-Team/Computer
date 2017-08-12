@@ -53,6 +53,8 @@ void free(void *ptr);
 
 void *malloc(size_t size);
 
+void malloc_compact();
+
 void *realloc(void *ptr, size_t size);
 
 void abort();

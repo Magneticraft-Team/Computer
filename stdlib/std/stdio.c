@@ -28,6 +28,7 @@ void clear_screen() {
     }
     monitor_set_selected_line(mon, 0);
     monitor_set_cursor_pos_y(mon, 0);
+    monitor_set_cursor_pos_x(mon, 0);
 }
 
 static int printn(int num, int base) {

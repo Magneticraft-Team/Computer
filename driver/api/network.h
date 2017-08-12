@@ -46,6 +46,7 @@ typedef struct network_header *Network;
 
 #define NETWORK_SIGNAL_OPEN_TCP_CONNECTION 1
 #define NETWORK_SIGNAL_CLOSE_TCP_CONNECTION 2
+#define NETWORK_SIGNAL_OPEN_SSL_TCP_CONNECTION 3
 
 void network_signal(Network network, i8 signal);
 

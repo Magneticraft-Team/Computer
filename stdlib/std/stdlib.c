@@ -5,6 +5,7 @@
 #include "../api/motherboard.h"
 #include "stdlib.h"
 #include "assert.h"
+#include "stdio.h"
 
 ////////////// STRING CONVERSIONS //////////////
 
@@ -168,13 +169,23 @@ void free(void *ptr) {
     }
 }
 
+// program end address, the end of the bss program section
+extern char* __end;
+
 void *malloc(unsigned size) {
     unsigned fsize;
     UNIT *p;
 
     if(!malloc_init_flag){
-        malloc_init((void *) 0xA000, 0);
+        fsize = (unsigned int) &__end;
+        // offset to avoid data corruption
+        fsize += 16;
+        // aligning to word boundaries
+        fsize += 3;
+        fsize &= ~3;
+        malloc_init((void *) fsize, motherboard_get_memory_size() - fsize);
         malloc_init_flag = 1;
+        fsize = 0;
     }
     if (size == 0) return 0;
 
