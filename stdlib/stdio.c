@@ -2,13 +2,11 @@
 // Created by cout970 on 2016-11-01.
 //
 
-#include "../api/monitor.h"
-#include "../api/motherboard.h"
-#include "stdio.h"
-#include "stdarg.h"
-#include "string.h"
-#include "assert.h"
-#include "stdlib.h"
+#include "dependencies.h"
+#include "api/stdio.h"
+#include "api/stdarg.h"
+#include "api/string.h"
+#include "api/stdlib.h"
 
 #define SPACE ((char)32)
 

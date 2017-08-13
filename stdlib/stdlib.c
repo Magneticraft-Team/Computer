@@ -2,10 +2,9 @@
 // Created by cout970 on 2016-10-23.
 //
 
-#include "../api/motherboard.h"
-#include "stdlib.h"
-#include "assert.h"
-#include "stdio.h"
+#include "dependencies.h"
+#include "api/stdlib.h"
+#include "api/stdio.h"
 
 ////////////// STRING CONVERSIONS //////////////
 

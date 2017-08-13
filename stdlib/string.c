@@ -2,9 +2,9 @@
 // Created by cout970 on 2016-10-28.
 //
 
-#include "string.h"
-#include "assert.h"
-#include "stdlib.h"
+#include "dependencies.h"
+#include "api/stdlib.h"
+#include "api/string.h"
 
 void *memchr(const void *str, int c, size_t n) {
     for (int i = 0; i < (int) n; i++) {

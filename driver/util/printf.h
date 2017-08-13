@@ -10,7 +10,7 @@
  * define USE_DEBUG_LOG to use game log instead the monitor to print text
  */
 
-#include "api/motherboard.h"
+#include "../api/motherboard.h"
 
 // List of variable arguments
 #define va_list struct { int* _ptr; int _count; }

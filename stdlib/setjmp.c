@@ -2,8 +2,8 @@
 // Created by cout970 on 2016-11-01.
 //
 
-#include "setjmp.h"
-#include "assert.h"
+#include "dependencies.h"
+#include "api/setjmp.h"
 
 
 int setjmp(jmp_buf buf IGNORED) {

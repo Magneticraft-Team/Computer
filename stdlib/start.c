@@ -2,9 +2,8 @@
 // Created by cout970 on 2017-07-27.
 //
 
-#include "api/types.h"
-#include "api/motherboard.h"
-#include "std/stdio.h"
+#include "dependencies.h"
+#include "api/stdio.h"
 
 i32 fib(i32 pos) {
     if (pos == 0 || pos == 1) return 1;

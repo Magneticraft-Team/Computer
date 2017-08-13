@@ -2,7 +2,7 @@
 // Created by cout970 on 2017-07-15.
 //
 
-#include "network.h"
+#include "api/network.h"
 
 
 void network_signal(Network network, i8 signal) {

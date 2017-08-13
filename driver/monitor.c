@@ -2,7 +2,7 @@
 // Created by cout970 on 2017-07-10.
 //
 
-#include "monitor.h"
+#include "api/monitor.h"
 
 i32 monitor_get_num_lines(Monitor monitor) {
     return monitor->lines;

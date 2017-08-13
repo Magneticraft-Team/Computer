@@ -7,7 +7,7 @@
 #include "api/motherboard.h"
 #include "api/monitor.h"
 #include "api/disk_drive.h"
-#include "printf.h"
+#include "util/printf.h"
 #include "api/network.h"
 
 void run_tests();

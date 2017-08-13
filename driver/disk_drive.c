@@ -2,7 +2,7 @@
 // Created by cout970 on 2017-07-23.
 //
 
-#include "disk_drive.h"
+#include "api/disk_drive.h"
 
 void disk_drive_signal(DiskDrive drive, i32 signal) {
     ((struct disk_drive_header* volatile) drive)->signal = (i8) signal;

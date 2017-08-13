@@ -2,7 +2,7 @@
 // Created by cout970 on 2017-07-10.
 //
 
-#include "motherboard.h"
+#include "api/motherboard.h"
 
 struct motherboard_header *mb = (struct motherboard_header *) 0xFFFF0000;
 

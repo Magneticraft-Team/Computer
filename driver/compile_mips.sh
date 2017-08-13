@@ -17,7 +17,7 @@ if ! type "mipsel-none-elf-ar" > /dev/null; then
     exit -1
 fi
 
-api_files="api/motherboard.c api/monitor.c api/network.c api/disk_drive.c"
+api_files="motherboard.c monitor.c network.c disk_drive.c"
 c_files="start.c $api_files"
 asm_files="boot.asm"
 linker_script="linker.ld"
