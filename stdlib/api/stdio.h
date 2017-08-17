@@ -41,4 +41,6 @@ int getchar();
 
 void unputchar();
 
+void fflush(FILE* fd);
+
 #endif //COMPUTER_STDIO_H
