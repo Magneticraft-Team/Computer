@@ -37,15 +37,15 @@ long int atol(const char *str) {
     return atoi(str);
 }
 
-long int strtol(const char *str, char **endptr, int base){
+long int strtol(const char *str, char **endptr, int base) {
     long int acum = 0;
     int pos = 0;
     int sign = 1;
 
-    if(str[pos] == '-'){
+    if (str[pos] == '-') {
         sign = -1;
         pos++;
-    }else if(str[pos] == '+'){
+    } else if (str[pos] == '+') {
         pos++;
     }
 
@@ -67,6 +67,7 @@ long int strtol(const char *str, char **endptr, int base){
         acum = acum * base + val;
         pos++;
     }
+    *endptr = (char *) &str[pos];
 
     return acum * sign;
 }
@@ -169,13 +170,13 @@ void free(void *ptr) {
 }
 
 // program end address, the end of the bss program section
-extern char* __end;
+extern char *__end;
 
 void *malloc(unsigned size) {
     unsigned fsize;
     UNIT *p;
 
-    if(!malloc_init_flag){
+    if (!malloc_init_flag) {
         fsize = (unsigned int) &__end;
         // offset to avoid data corruption
         fsize += 16;
@@ -236,22 +237,22 @@ void abort() {
     exit(-1);
 }
 
-int atexit(void (*func)() IGNORED){
+int atexit(void (*func)() IGNORED) {
     // TODO run func at program exit
     return 0;
 }
 
-void exit(int status IGNORED){
+void exit(int status IGNORED) {
     motherboard_signal(MOTHERBOARD_SIGNAL_HALT);
 }
 
 ////////////// ENVIROMENT //////////////
 
-char *getenv(const char *str IGNORED){
-    return (char *)NULL;
+char *getenv(const char *str IGNORED) {
+    return (char *) NULL;
 }
 
-int system(const char *str IGNORED){
+int system(const char *str IGNORED) {
     return 0;
 }
 
@@ -263,22 +264,22 @@ int system(const char *str IGNORED){
 
 ////////////// MATH //////////////
 
-int abs(int x){
+int abs(int x) {
     return (x < 0) ? -x : x;
 }
 
-div_t div(int numer, int demom){
+div_t div(int numer, int demom) {
     div_t d;
     d.quot = numer / demom;
     d.rem = numer % demom;
     return d;
 }
 
-long int labs(long int x){
+long int labs(long int x) {
     return abs(x);
 }
 
-ldiv_t ldiv(long int numer, long int demom){
+ldiv_t ldiv(long int numer, long int demom) {
     ldiv_t d;
     d.quot = numer / demom;
     d.rem = numer % demom;
