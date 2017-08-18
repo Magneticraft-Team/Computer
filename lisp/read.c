@@ -21,10 +21,10 @@ void readLineBuffered() {
     line_num++;
     printf("%d >", line_num);
     fgets(inputBuffer, INPUT_BUFFER_SIZE - 1, stdin);
+    putchar('\n');
     int len = strlen(inputBuffer);
     inputBuffer[len] = ' ';
     inputBuffer[len + 1] = '\0';
-    putchar('\n');
 }
 
 char getNextChar() {

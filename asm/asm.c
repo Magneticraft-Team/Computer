@@ -3,11 +3,90 @@
 //
 
 #include "asm.h"
-#include "ctype.h"
-#include "setjmp.h"
-#include "string.h"
-#include "stdint.h"
-#include "stdlib.h"
+#include "read.h"
+
+enum Tokens {
+    NO_TOKEN,
+    ERROR,
+    ADD,
+    ADDI,
+    ADDIU,
+    ADDU,
+    AND,
+    ANDI,
+    BEQ,
+    BGEZ,
+    BGEZAL,
+    BGTZ,
+    BLEZ,
+    BLTZ,
+    BLTZAL,
+    BNE,
+    DIV,
+    DIVU,
+    J,
+    JAL,
+    JR,
+    LB,
+    LUI,
+    LW,
+    MFHI,
+    MFLO,
+    MULT,
+    MULTU,
+    NOOP,
+    OR,
+    ORI,
+    SB,
+    SLL,
+    SLLV,
+    SLT,
+    SLTI,
+    SLTIU,
+    SLTU,
+    SRA,
+    SRL,
+    SRLV,
+    SUB,
+    SUBU,
+    SW,
+    SYSCALL,
+    XOR,
+    XORI,
+    NAME,
+    NUMBER,
+    DOLAR,
+    DOT,
+    LF,
+    SEMICOLON,
+    COMA,
+    LPAREN,
+    RPAREN
+};
+
+const char *keywords[] = {
+        "ADD", "ADDI", "ADDIU", "ADDU", "AND", "ANDI", "BEQ", "BGEZ", "BGEZAL", "BGTZ", "BLEZ", "BLTZ", "BLTZAL", "BNE",
+        "DIV", "DIVU", "J", "JAL", "JR", "LB", "LUI", "LW", "MFHI", "MFLO", "MULT", "MULTU", "NOOP", "OR", "ORI", "SB",
+        "SLL", "SLLV", "SLT", "SLTI", "SLTIU", "SLTU", "SRA", "SRL", "SRLV", "SUB", "SUBU", "SW", "SYSCALL", "XOR",
+        "XOR",
+        NULL
+};
+
+const char *tokenNames[] = {
+        "No token", "Error", "ADD", "ADDI", "ADDIU", "ADDU", "AND", "ANDI", "BEQ", "BGEZ", "BGEZAL", "BGTZ", "BLEZ",
+        "BLTZ", "BLTZAL", "BNE",
+        "DIV", "DIVU", "J", "JAL", "JR", "LB", "LUI", "LW", "MFHI", "MFLO", "MULT", "MULTU", "NOOP", "OR", "ORI", "SB",
+        "SLL", "SLLV", "SLT", "SLTI", "SLTIU", "SLTU", "SRA", "SRL", "SRLV", "SUB", "SUBU", "SW", "SYSCALL", "XOR",
+        "XOR",
+        "NAME", "NUMBER", "$", ".", "\\n", ":", ",", "(", ")"
+};
+
+const char *registerNames[] = {
+        "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "s0", "s1",
+        "s2",
+        "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"
+};
+
 
 #define input_buffer_size 120
 char inputBuffer[input_buffer_size];
@@ -17,8 +96,9 @@ int charLook;
 char tokenBuffer[input_buffer_size];
 int tokenLook;
 
-jmp_buf jumpBuffer;
+jmp_buf onError;
 
+//compilation output buffer
 int codeBufferIndex = 0;
 uint8_t codeBuffer[1024];
 
@@ -38,10 +118,10 @@ void readChar() {
     charLook = inputBuffer[inputIndex++];
 }
 
-int strcmpc(const char *const a, const char *const b) {
+int stringDiff(const char *const a, const char *const b) {
     int i = 0;
     while (1) {
-        if (toupper(a[i]) != toupper(b[i]))return 1;
+        if (toupper(a[i]) != toupper(b[i])) return 1;
         if (a[i] == '\0') break;
         i++;
     }
@@ -77,7 +157,7 @@ int scanToken() {
         tokenBuffer[p] = '\0';
 
         for (int i = 0; keywords[i] != NULL; i++) {
-            if (!strcmpc(keywords[i], tokenBuffer)) {
+            if (!stringDiff(keywords[i], tokenBuffer)) {
                 return i + 2;
             }
         }
@@ -162,7 +242,7 @@ void need(int tk) {
         } else {
             printf("Expected (%s), but found (%s)\n", tokenNames[tk], tokenNames[tokenLook]);
         }
-        longjmp(jumpBuffer, 1);
+        longjmp(onError, 1);
     }
 }
 
@@ -178,11 +258,11 @@ int parseRegister() {
         if (num < 0 || num > 32) {
             printf("Unknown token trying to parse a register: \n");
             printToken(tokenLook);
-            longjmp(jumpBuffer, 1);
+            longjmp(onError, 1);
         }
     } else if (tokenLook == NAME) {
         for (int i = 0; i < 32; i++) {
-            if (!strcmpc(registerNames[i], tokenBuffer)) {
+            if (!stringDiff(registerNames[i], tokenBuffer)) {
                 num = i;
                 break;
             }
@@ -190,12 +270,12 @@ int parseRegister() {
         if (num == -1) {
             printf("Unknown token trying to parse a register: \n");
             printToken(tokenLook);
-            longjmp(jumpBuffer, 1);
+            longjmp(onError, 1);
         }
     } else {
         printf("Unknown token trying to parse a register: \n");
         printToken(tokenLook);
-        longjmp(jumpBuffer, 1);
+        longjmp(onError, 1);
     }
     return num;
 }
@@ -206,7 +286,7 @@ int parseInt() {
     } else {
         printf("Unknown token trying to parse an integer: \n");
         printToken(tokenLook);
-        longjmp(jumpBuffer, 1);
+        longjmp(onError, 1);
     }
 }
 
@@ -338,14 +418,23 @@ void parse(int type, int code) {
         case 5: // R: name location
             expect(NAME);
             for (i = 0; i < identifierTableIndex; ++i) {
-                if (strcmpc(identifierTable[i].identifier, tokenBuffer)) {
+                if (!stringDiff(identifierTable[i].identifier, tokenBuffer)) {
                     addr = identifierTable[i].index * 4;
                     break;
                 }
             }
-            if (addr == -1) {
-                printf("Invalid pointer to jump (%s)\n", tokenBuffer);
-                longjmp(jumpBuffer, 1);
+            if (i == identifierTableIndex) {
+                printf("Unknown point to jump (%s)\n", tokenBuffer);
+                printf("Valid points: ");
+                for (i = 0; i < identifierTableIndex; ++i) {
+                    printf("%s ", identifierTable[i].identifier);
+                }
+                putchar('\n');
+                longjmp(onError, 1);
+
+            } else if (addr == -1) {
+                printf("Invalid pointer to jump %x (%s)\n", addr, tokenBuffer);
+                longjmp(onError, 1);
             }
 #ifdef DEBUG
             printf("addr 0x%08x, name: %s\n", addr, identifierTable[i].identifier);
@@ -549,19 +638,18 @@ void parseLine() {
         case NO_TOKEN:
             return;
         case ERROR:
-            longjmp(jumpBuffer, 1);
+            longjmp(onError, 1);
         default:
             printf("Unexpected token: ");
             printToken(tokenLook);
     }
 }
 
-int loopTick(){
-    printf("> ");
-    fflush(stdout);
-    fgets(inputBuffer, input_buffer_size, stdin);
+int loopTick() {
 
-    if (strcmpc(inputBuffer, "exit") == 0) {
+    readLine(inputBuffer, input_buffer_size);
+
+    if (!stringDiff(inputBuffer, ":exit")) {
         return 1;
     }
 
@@ -569,7 +657,7 @@ int loopTick(){
     inputIndex = 0;
     readChar();
 
-    if (!setjmp(jumpBuffer)) {
+    if (!setjmp(onError)) {
         do {
             readToken();
             parseLine();
@@ -580,7 +668,7 @@ int loopTick(){
     return 0;
 }
 
-void printCode(){
+void printCode() {
     printf("\n");
     for (int i = 0; i < codeBufferIndex; ++i) {
         printf("0x%08x\n", ((int *) codeBuffer)[i]);

@@ -100,7 +100,7 @@ int printf(const char *ptr, ...) {
     return sum;
 }
 
-int fprintf(FILE *fd IGNORED, const char *ptr, ...){
+int fprintf(FILE *fd IGNORED, const char *ptr, ...) {
     va_list lista;
     va_start(lista, ptr);
 
@@ -176,25 +176,8 @@ void jumpLine() {
 }
 
 char *fgets(char *str, int n, FILE *stream) {
-    if (stream->_id == stdin->_id) {
-        int i;
-        for (i = 0; i < n - 1; i++) {
-            int c = getchar();
-            if (c == 13 || c == 10) {
-                break;
-            }
-            if (c == 8) {
-                if (i > 0) {
-                    i--;
-                    unputchar();
-                }
-                i--;
-            } else {
-                str[i] = (char) c;
-                putchar(c);
-            }
-        }
-        str[i] = '\0';
+    if(stream != NULL && stream->readFunc != NULL){
+        stream->readFunc(str, n);
         return str;
     }
     return (char *) NULL;
@@ -278,21 +261,62 @@ void putchar(int c) {
 
 ///////////// FILE IO /////////////
 
-FILE _std_io[] = {{0}, {1}, {2}};
-FILE _floppy = {3};
+static int readStdin(char *str, int n){
+    int i;
+    for (i = 0; i < n - 1; i++) {
+        int c = getchar();
+        if (c == 13 || c == 10) {
+            break;
+        }
+        if (c == 8) {
+            if (i > 0) {
+                i--;
+                unputchar();
+            }
+            i--;
+        } else {
+            str[i] = (char) c;
+            putchar(c);
+        }
+    }
+    str[i] = '\0';
+    return i;
+}
+
+static int writeStdout(char *str, int n){
+    int j;
+    for (j = 0; j < n; j++) {
+        putchar((int) str[j]);
+    }
+    return j;
+}
+
+FILE _stdin = {0, &readStdin, NULL};
+FILE _stdout = {1, NULL, &writeStdout};
+// there are no colors in the monitor so this is equivalent to stdout
+
+FILE _stderr = {2, NULL, &writeStdout};
+
+FILE* stdin = &_stdin;
+FILE* stdout = &_stdout;
+FILE* stderr = &_stderr;
 
 FILE *fopen(const char *name IGNORED, const char *flags IGNORED) {
-    return &_floppy;
+    return NULL;
 }
 
 int fclose(FILE *file IGNORED) {
     return 0;
 }
 
-int getc(FILE *file IGNORED){
-    return getchar();
+int getc(FILE *file) {
+    char a[1];
+    fgets(a, 1, file);
+    return a[0];
 }
 
-void ungetc(int c IGNORED, FILE *file IGNORED){
+void ungetc(int c IGNORED, FILE *file IGNORED) {
     return unputchar();
 }
+
+void fflush(FILE *fd IGNORED) {}

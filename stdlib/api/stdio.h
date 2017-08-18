@@ -7,13 +7,13 @@
 
 typedef struct {
     int _id;
+    int (*readFunc)(char* buff, int size);
+    int (*writeFunc)(char* buff, int size);
 } FILE;
 
-extern FILE _std_io[3];
-
-#define stdin (&_std_io[0])
-#define stdout (&_std_io[1])
-#define stderr (&_std_io[2])
+extern FILE* stdin;
+extern FILE* stdout;
+extern FILE* stderr;
 
 #define EOF -1
 
