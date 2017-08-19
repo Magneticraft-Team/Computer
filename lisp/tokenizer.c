@@ -18,6 +18,31 @@ inline int isEq(const char *a, const char *b) {
     return strcmp(a, b) == 0;
 }
 
+static void readNumber(char currentChar) {
+    for (;;) {
+        if (!isdigit(currentChar)) {
+            putNextChar(currentChar);
+            tokenBuffer[tokenBufferPtr++] = '\0';
+            return;
+        }
+        tokenBuffer[tokenBufferPtr++] = currentChar;
+        currentChar = getNextChar();
+    }
+}
+
+static void readSymbol(char currentChar) {
+    for (;;) {
+        if (strchr("()\'", currentChar) || isspace(currentChar)) {
+            putNextChar(currentChar);
+            tokenBuffer[tokenBufferPtr++] = '\0';
+            tokenType = STRING;
+            return;
+        }
+        tokenBuffer[tokenBufferPtr++] = currentChar;
+        currentChar = getNextChar();
+    }
+}
+
 void readToken() {
     char comment = 0;
     char currentChar;
@@ -46,34 +71,26 @@ void readToken() {
     // negative number?
     if (currentChar == '-') {
         currentChar = getNextChar();
-        tokenBuffer[tokenBufferPtr++] = currentChar;
+        if (isdigit(currentChar)) {
+            tokenType = NUMBER;
+            readNumber(currentChar);
+            return;
+        } else {
+            readSymbol(currentChar);
+            return;
+        }
     }
 
     // Number
     if (isdigit(currentChar)) {
         tokenType = NUMBER;
-        for (;;) {
-            currentChar = getNextChar();
-            if (!isdigit(currentChar)) {
-                putNextChar(currentChar);
-                tokenBuffer[tokenBufferPtr++] = '\0';
-                return;
-            }
-            tokenBuffer[tokenBufferPtr++] = currentChar;
-        }
+        readNumber();
+        return;
     }
 
     //String
-    for (;;) {
-        currentChar = getNextChar();
-        if (strchr("()\'", currentChar) || isspace(currentChar)) {
-            putNextChar(currentChar);
-            tokenBuffer[tokenBufferPtr++] = '\0';
-            tokenType = STRING;
-            return;
-        }
-        tokenBuffer[tokenBufferPtr++] = currentChar;
-    }
+    currentChar = getNextChar();
+    readSymbol(currentChar);
 }
 
 void nextToken() {
@@ -96,7 +113,7 @@ Object *readObj() {
     if (tokenType == NUMBER) {
         return createInt(atoi(tokenBuffer));
     }
-    if(tokenType == STRING){
+    if (tokenType == STRING) {
         return getOrCreateSymbol(createSymbolString());
     }
     printf("Error: invalid token '%s'\n", tokenBuffer);
@@ -106,11 +123,11 @@ Object *readObj() {
 Object *readList() {
 
     nextToken();
-    if(tokenType == RIGHT_PAREN){
+    if (tokenType == RIGHT_PAREN) {
         return nil;
     }
     if (tokenType == DOT) {
-       return readObj();
+        return readObj();
     }
     mustReadToken = 0;
     return createCons(readObj(), readList());

@@ -23,14 +23,19 @@ String *createString(const char *str) {
     return header;
 }
 
-Word *newWord(String *name, Func function, int count, ...) {
+Word *newWord(String *name, Func function, int inmed, int count, ...) {
     va_list ap;
     va_start(ap, count);
     int i;
-    fun_align_word(NULL);
+    fun_align_word();
     Word *word = allot(sizeof(Word) + sizeof(int) * count);
 
     word->name = name;
+    if (inmed) {
+        word->flags = IMMEDIATE_BIT_MASK;
+    } else {
+        word->flags = 0;
+    };
     word->next = NULL;
     word->code = function;
 
@@ -76,13 +81,17 @@ Word *findIn(Word *dictionary, String *name) {
 }
 
 Word *createWord(const char *name, Func fun) {
-    return newWord(createString(name), fun, 0);
+    return newWord(createString(name), fun, 0, 0);
+}
+
+Word *createInmediateWord(const char *name, Func fun) {
+    return newWord(createString(name), fun, 1, 0);
 }
 
 Word *createVariable(const char *name, int data) {
-    return newWord(createString(name), readVariableAddress, 1, data);
+    return newWord(createString(name), readVariableAddress, 0, 1, data);
 }
 
 Word *createConstant(const char *name, int data) {
-    return newWord(createString(name), readVariableValue, 1, data);
+    return newWord(createString(name), readVariableValue, 0, 1, data);
 }

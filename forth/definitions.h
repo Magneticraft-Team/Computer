@@ -18,11 +18,11 @@ typedef struct word {
 
     struct word *next;
 
-    void (*code)(struct word *);
+    void (*code)(void);
 
     int data[0];
 } Word;
 
-typedef void (*Func)(Word *);
+typedef void (*Func)(void);
 
 #endif //MAGNETICRAFTCOMPUTER_DEFINITIONS_H
