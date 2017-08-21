@@ -448,7 +448,6 @@ void fun_dot_quote() {
         *(int*)dp = (int) int_dot_quote;
         dp += 4;
 
-        char* aux = dp;
         for (int i = 0; i < text->size; ++i) {
             *dp = text->array[i];
             dp++;
