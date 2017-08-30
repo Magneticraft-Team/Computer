@@ -21,7 +21,9 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/* a dynamic array implementation using macros
+/*
+ * A dynamic array implementation using macros
+ * Reference: https://troydhanson.github.io/uthash/utarray.html
  */
 #ifndef UTARRAY_H
 #define UTARRAY_H
@@ -58,11 +60,13 @@ typedef struct {
     char *d;     /* n slots of size icd->sz*/
 } UT_array;
 
+// utarray_init(UT_array *a,UT_icd *icd) // init an array (non-alloc)
 #define utarray_init(a,_icd) do {                                             \
   memset(a,0,sizeof(UT_array));                                               \
   (a)->icd = *(_icd);                                                         \
 } while(0)
 
+// utarray_done(UT_array *a) // dispose of an array (non-allocd)
 #define utarray_done(a) do {                                                  \
   if ((a)->n) {                                                               \
     if ((a)->icd.dtor) {                                                      \
@@ -76,17 +80,20 @@ typedef struct {
   (a)->n=0;                                                                   \
 } while(0)
 
+// utarray_new(UT_array *a, UT_icd *icd) // allocate a new array
 #define utarray_new(a,_icd) do {                                              \
   (a) = (UT_array*)malloc(sizeof(UT_array));                                  \
   if ((a) == NULL) oom();                                                     \
   utarray_init(a,_icd);                                                       \
 } while(0)
 
+// utarray_free(UT_array *a) //free an allocated array
 #define utarray_free(a) do {                                                  \
   utarray_done(a);                                                            \
   free(a);                                                                    \
 } while(0)
 
+// utarray_reserve(UT_array *a,int n) // ensure space available for n more elements
 #define utarray_reserve(a,by) do {                                            \
   if (((a)->i+(by)) > (a)->n) {                                               \
     char *utarray_tmp;                                                        \
@@ -97,17 +104,22 @@ typedef struct {
   }                                                                           \
 } while(0)
 
+// utarray_push_back(UT_array *a,void *p) // push element p onto a
 #define utarray_push_back(a,p) do {                                           \
   utarray_reserve(a,1);                                                       \
   if ((a)->icd.copy) { (a)->icd.copy( _utarray_eltptr(a,(a)->i++), p); }      \
   else { memcpy(_utarray_eltptr(a,(a)->i++), p, (a)->icd.sz); };              \
 } while(0)
 
+
+// utarray_pop_back(UT_array *a) // pop last element from a
 #define utarray_pop_back(a) do {                                              \
   if ((a)->icd.dtor) { (a)->icd.dtor( _utarray_eltptr(a,--((a)->i))); }       \
   else { (a)->i--; }                                                          \
 } while(0)
 
+
+// utarray_extend_back(UT_array *a) // push empty element onto a
 #define utarray_extend_back(a) do {                                           \
   utarray_reserve(a,1);                                                       \
   if ((a)->icd.init) { (a)->icd.init(_utarray_eltptr(a,(a)->i)); }            \
@@ -115,11 +127,14 @@ typedef struct {
   (a)->i++;                                                                   \
 } while(0)
 
+// utarray_len(UT_array *a) // get length of a
 #define utarray_len(a) ((a)->i)
 
+// utarray_eltptr(UT_array *a,int j) // get pointer of element from index
 #define utarray_eltptr(a,j) (((j) < (a)->i) ? _utarray_eltptr(a,j) : NULL)
 #define _utarray_eltptr(a,j) ((a)->d + ((a)->icd.sz * (j)))
 
+// utarray_insert(UT_array *a,void *p, int j) // insert element p to index j
 #define utarray_insert(a,p,j) do {                                            \
   if ((j) > (a)->i) utarray_resize(a,j);                                      \
   utarray_reserve(a,1);                                                       \
@@ -132,6 +147,7 @@ typedef struct {
   (a)->i++;                                                                   \
 } while(0)
 
+// utarray_inserta(UT_array *a,UT_array *w, int j) // insert array w into array a at index j
 #define utarray_inserta(a,w,j) do {                                           \
   if (utarray_len(w) == 0) break;                                             \
   if ((j) > (a)->i) utarray_resize(a,j);                                      \
@@ -153,6 +169,7 @@ typedef struct {
   (a)->i += utarray_len(w);                                                   \
 } while(0)
 
+// utarray_resize(UT_array *dst,int num) // extend or shrink array to num elements
 #define utarray_resize(dst,num) do {                                          \
   unsigned _ut_i;                                                             \
   if ((dst)->i > (unsigned)(num)) {                                           \
@@ -174,10 +191,12 @@ typedef struct {
   (dst)->i = (num);                                                           \
 } while(0)
 
+// utarray_concat(UT_array *dst,UT_array *src) // copy src to end of dst array
 #define utarray_concat(dst,src) do {                                          \
   utarray_inserta(dst, src, utarray_len(dst));                                \
 } while(0)
 
+// utarray_erase(UT_array *a,int pos,int len) // remove len elements from a[pos]..a[pos+len-1]
 #define utarray_erase(a,pos,len) do {                                         \
   if ((a)->icd.dtor) {                                                        \
     unsigned _ut_i;                                                           \
@@ -192,11 +211,13 @@ typedef struct {
   (a)->i -= (len);                                                            \
 } while(0)
 
+
 #define utarray_renew(a,u) do {                                               \
   if (a) utarray_clear(a);                                                    \
   else utarray_new(a, u);                                                     \
 } while(0)
 
+// utarray_clear(UT_array *a) // clear all elements from a, setting its length to zero
 #define utarray_clear(a) do {                                                 \
   if ((a)->i > 0) {                                                           \
     if ((a)->icd.dtor) {                                                      \
@@ -209,16 +230,27 @@ typedef struct {
   }                                                                           \
 } while(0)
 
+// utarray_sort(UT_array *a,cmpfcn *cmp) // sort elements of a using comparison function
 #define utarray_sort(a,cmp) do {                                              \
   qsort((a)->d, (a)->i, (a)->icd.sz, cmp);                                    \
 } while(0)
 
+// utarray_find(UT_array *a,void *v, cmpfcn *cmp) // find element v in utarray (must be sorted)
 #define utarray_find(a,v,cmp) bsearch((v),(a)->d,(a)->i,(a)->icd.sz,cmp)
 
+// utarray_front(UT_array *a) // get first element of a
 #define utarray_front(a) (((a)->i) ? (_utarray_eltptr(a,0)) : NULL)
+
+// utarray_next(UT_array *a,void *e) // get element of a following e (front if e is NULL)
 #define utarray_next(a,e) (((e)==NULL) ? utarray_front(a) : ((((a)->i) > (utarray_eltidx(a,e)+1)) ? _utarray_eltptr(a,utarray_eltidx(a,e)+1) : NULL))
+
+// utarray_prev(UT_array *a,void *e) // get element of a before e (back if e is NULL)
 #define utarray_prev(a,e) (((e)==NULL) ? utarray_back(a) : ((utarray_eltidx(a,e) > 0) ? _utarray_eltptr(a,utarray_eltidx(a,e)-1) : NULL))
+
+// utarray_back(UT_array *a) // get last element of a
 #define utarray_back(a) (((a)->i) ? (_utarray_eltptr(a,(a)->i-1)) : NULL)
+
+// utarray_eltidx(UT_array *a,void *e) // get index of element from pointer
 #define utarray_eltidx(a,e) (((char*)(e) >= (a)->d) ? (((char*)(e) - (a)->d)/(a)->icd.sz) : -1)
 
 /* last we pre-define a few icd for common utarrays of ints and strings */
@@ -230,6 +262,8 @@ static void utarray_str_dtor(void *elt) {
   char **eltc = (char**)elt;
   if (*eltc != NULL) free(*eltc);
 }
+
+// predefined icd
 static const UT_icd ut_str_icd UTARRAY_UNUSED = {sizeof(char*),NULL,utarray_str_cpy,utarray_str_dtor};
 static const UT_icd ut_int_icd UTARRAY_UNUSED = {sizeof(int),NULL,NULL,NULL};
 static const UT_icd ut_ptr_icd UTARRAY_UNUSED = {sizeof(void*),NULL,NULL,NULL};

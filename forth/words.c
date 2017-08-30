@@ -10,6 +10,7 @@
 #include "words.h"
 #include "dictionary.h"
 #include "stack.h"
+#include "../stdlib/filesystem.h"
 
 /*** VARIABLES ***/
 
@@ -367,8 +368,8 @@ void fun_words() {
     }
 }
 
-int byteToIntCeil(int bytes){
-    int ints = bytes/4;
+int byteToIntCeil(int bytes) {
+    int ints = bytes / 4;
     int rest = bytes - ints * 4;
 
     return ints + ((rest != 0) ? 1 : 0);
@@ -401,7 +402,7 @@ void printWord(Word *word) {
                 printf("LIT(%d) ", word->data[++i]);
             } else if (item == int_dot_quote) {
                 printf(".\"(");
-                char* str = (char *)(word->data + i + 1);
+                char *str = (char *) (word->data + i + 1);
                 int count = printf("%s", str) + 1;
                 i += byteToIntCeil(count);
                 printf(")");
@@ -414,15 +415,6 @@ void printWord(Word *word) {
         printf("]");
     }
     printf(")");
-}
-
-// DEBUG (--) name
-void fun_debug() {
-    fun_minus_find();
-    if (popData()) {
-        Word *word = (Word *) popData();
-        printWord(word);
-    }
 }
 
 // ABORT" (--)
@@ -438,14 +430,14 @@ void fun_dot_quote() {
     pushData('\"');
     fun_word();
     String *text = (String *) popData();
-    if(text->size == 0)
+    if (text->size == 0)
         return;
 
     // scape the " char
     moreIn->data[0]++;
 
     if (*state->data) {
-        *(int*)dp = (int) int_dot_quote;
+        *(int *) dp = (int) int_dot_quote;
         dp += 4;
 
         for (int i = 0; i < text->size; ++i) {
@@ -463,7 +455,7 @@ void fun_dot_quote() {
 
 // (.") (--)
 void fun_int_dot_quote() {
-    char* str = (char *)(currentWordList->data + instructionOffset + 1);
+    char *str = (char *) (currentWordList->data + instructionOffset + 1);
     int countTest = printf("%s", str) + 1;
     instructionOffset += byteToIntCeil(countTest);
 }
@@ -520,6 +512,8 @@ void fun_load() {
         fun_block();
     }
     *blk->data = block;
+    *moreIn->data = 0;
+    *span->data = strlen((const char *) popData());
     fun_interpret();
 }
 
@@ -868,6 +862,91 @@ void fun_forth() {
     }
 }
 
+// DEBUG (--) name
+void fun_debug() {
+//    fun_minus_find();
+//    if (popData()) {
+//        Word *word = (Word *) popData();
+//        printWord(word);
+//    }
+    DiskDrive drive = motherboard_get_floppy_drive();
+
+    pushData(' ');
+    fun_word();
+    String *name = (String *) popData();
+
+    File *root = file_get_root(drive);
+    printf("Root: id: %d, name = '%s', type = %d, nextBlock = %d, size = %d, lastModified = %d, parent = %d\n",
+           root->firstBlock, root->name, root->type, root->nextBlock, root->size, root->lastModified, root->parent);
+    File *file = file_create(drive, root, name->array, FILE_TYPE_NORMAL);
+    printf("File created: id: %d, name = '%s', type = %d, nextBlock = %d, size = %d, lastModified = %d, parent = %d\n",
+           file->firstBlock, file->name, file->type, file->nextBlock, file->size, file->lastModified, file->parent);
+}
+
+void fun_ls() {
+    DiskDrive drive = motherboard_get_floppy_drive();
+    File *root = file_get_root(drive);
+    int entryCount = root->size / sizeof(DirectoryEntry);
+    DirectoryEntry entry;
+    for (int i = 0; i < entryCount; ++i) {
+        file_read(drive, root, &entry, sizeof(DirectoryEntry) * i, sizeof(DirectoryEntry));
+        printf("%s(%d)\n", entry.name, entry.firstBlock);
+    }
+}
+
+void fun_write() {
+    DiskDrive drive = motherboard_get_floppy_drive();
+    File *root = file_get_root(drive);
+
+    pushData('"');
+    fun_word();
+    String *name = (String *) popData();
+
+    File *file1 = file_open(drive, root, name->array);
+    if (file1 == NULL) return;
+
+    printf("Opened file %s(%d)\n", file1->name, file1->firstBlock);
+    char buff[] = "abcdefghijklmnopqrstuvwxyz";
+    int size = sizeof(buff);
+    file_write(drive, file1, buff, 0, size);
+
+    file_close(drive, file1);
+}
+
+void fun_read() {
+    DiskDrive drive = motherboard_get_floppy_drive();
+    File *root = file_get_root(drive);
+
+    pushData('"');
+    fun_word();
+    String *name = (String *) popData();
+
+    File *file1 = file_open(drive, root, name->array);
+    if (file1 == NULL) return;
+
+    char buff[80];
+    int read, offset = 0;
+    do {
+        read = file_read(drive, file1, buff, offset, 80);
+        offset += read;
+        if (read != 0) {
+            printf("%s\n", buff);
+        }
+    } while (read != 0);
+    file_close(drive, file1);
+}
+
+void fun_delete(){
+    DiskDrive drive = motherboard_get_floppy_drive();
+    File *root = file_get_root(drive);
+
+    pushData('"');
+    fun_word();
+    String *name = (String *) popData();
+
+    File* file = file_open(drive, root, name->array);
+    file_delete(drive, root, file);
+}
 
 //TODO
 /*
@@ -942,4 +1021,8 @@ void init() {
     extendDictionary(createInmediateWord(".\"", fun_dot_quote));
     int_dot_quote = extendDictionary(createWord("(.\")", fun_int_dot_quote));
     extendDictionary(createWord("DEBUG", fun_debug));
+    extendDictionary(createWord("LS", fun_ls));
+    extendDictionary(createWord("WRITE", fun_write));
+    extendDictionary(createWord("READ", fun_read));
+    extendDictionary(createWord("DELETE", fun_delete));
 }

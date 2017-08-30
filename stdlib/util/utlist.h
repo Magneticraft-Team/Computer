@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define UTLIST_VERSION 2.0.2
 
-#include <assert.h>
+#include "../api/assert.h"
 
 /*
  * This file contains macros to manipulate singly and doubly-linked lists.
