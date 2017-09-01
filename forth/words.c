@@ -6,9 +6,6 @@
 // https://www.forth.com/starting-forth/1-forth-stacks-dictionary/
 //
 
-#include <api/math.h>
-#include <api/robot.h>
-#include "../stdlib/filesystem.h"
 #include "dependencies.h"
 #include "words.h"
 #include "dictionary.h"
