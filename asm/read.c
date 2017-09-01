@@ -7,7 +7,7 @@
 
 int lineNum = 0;
 int useDisk = 0;
-FILE* file = NULL;
+FILE* fileWord = NULL;
 
 void readLineTerminal(char* buffer, int maxSize){
     printf("%d > ", ++lineNum);
@@ -17,11 +17,11 @@ void readLineTerminal(char* buffer, int maxSize){
 
 void readLineDisk(char* buffer, int maxSize){
     lineNum++;
-    fgets(buffer, maxSize, file);
+    fgets(buffer, maxSize, fileWord);
 }
 
 void init(){
-    file = fopen("/devices/disk0", "r");
+    fileWord = fopen("/devices/disk0", "r");
 }
 
 void readLine(char* buffer, int maxSize) {

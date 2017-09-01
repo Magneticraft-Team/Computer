@@ -9,6 +9,7 @@ typedef struct {
     int _id;
     int (*readFunc)(char* buff, int size);
     int (*writeFunc)(char* buff, int size);
+    void* data;
 } FILE;
 
 extern FILE* stdin;

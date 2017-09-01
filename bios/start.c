@@ -49,6 +49,7 @@ int readDisk(DiskDrive drive) {
     int sectors = disk_drive_get_num_sectors(drive);
 
     if(sectors > 32) sectors = 32;
+    int wasEmpty = 0;
 
     for (i = 0; i < sectors; ++i) {
 
@@ -58,8 +59,12 @@ int readDisk(DiskDrive drive) {
 
         motherboard_sleep((i8) disk_drive_get_access_time(drive));
 
-        if (isEmpty(buffer, 1024)) break;
         memcpy(ptr + i * 1024, (const void *) buffer, 1024);
+        // stop at the second empty sector
+        if (isEmpty(buffer, 1024)){
+            if(wasEmpty) break;
+            wasEmpty = 1;
+        }
     }
 
     return i;

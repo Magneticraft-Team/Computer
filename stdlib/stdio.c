@@ -291,16 +291,17 @@ static int writeStdout(char *str, int n){
     return j;
 }
 
-FILE _stdin = {0, &readStdin, NULL};
-FILE _stdout = {1, NULL, &writeStdout};
+FILE _stdin = {0, &readStdin, NULL, NULL};
+FILE _stdout = {1, NULL, &writeStdout, NULL};
 // there are no colors in the monitor so this is equivalent to stdout
 
-FILE _stderr = {2, NULL, &writeStdout};
+FILE _stderr = {2, NULL, &writeStdout, NULL};
 
 FILE* stdin = &_stdin;
 FILE* stdout = &_stdout;
 FILE* stderr = &_stderr;
 
+// TODO implement this to work with filesystem.h
 FILE *fopen(const char *name IGNORED, const char *flags IGNORED) {
     return NULL;
 }

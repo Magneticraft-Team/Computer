@@ -3,20 +3,18 @@
 //
 
 #include "api/math.h"
-#include "api/stdio.h"
 #include "filesystem.h"
 #include "api/string.h"
-#include "api/stdlib.h"
-#include "util/utlist.h"
+#include "util/static_list.h"
 
-SuperBlock superBlockCache;
+static SuperBlock superBlockCache;
 
-typedef struct FileListNode {
-    File file;
-    struct FileListNode *next, *prev;
-} FileListNode;
+int file_equals(File* a, File* b){
+    return a->firstBlock == b->firstBlock;
+}
 
-FileListNode *openFiles = NULL;
+// non malloc list of 'File' up to MAX_OPEN_FILES
+StaticList(open_files, File, MAX_OPEN_FILES, file_equals);
 
 static void load_sector(DiskDrive drive, int sector) {
     disk_drive_set_current_sector(drive, sector);
@@ -97,10 +95,7 @@ static int get_file_in_folder(DiskDrive drive, File *folder, const char *name) {
 }
 
 static int open_files_count() {
-    int count;
-    FileListNode *iterator;
-    DL_COUNT(openFiles, iterator, count);
-    return count;
+    return open_files.used;
 }
 
 static int get_blocks_from_size(int size) {
@@ -207,10 +202,7 @@ static void alloc_blocks_up_to(DiskDrive drive, File *file, int totalBlocksNeede
 }
 
 static int file_is_open(File* file){
-    for(FileListNode *it = openFiles; it != NULL; it = it->next){
-        if(&it->file == file) return 1;
-    }
-    return 0;
+    return open_files_index_of(file) != -1;
 }
 
 void makeFileSystem(DiskDrive drive) {
@@ -244,21 +236,20 @@ void makeFileSystem(DiskDrive drive) {
     root->metadata.size = 0;
     root->metadata.lastModified = motherboard_get_minecraft_world_time();
 
-    FileListNode *node = malloc(sizeof(FileListNode));
-    memcpy(&node->file, &root->metadata, sizeof(File));
-    DL_APPEND(openFiles, node);
+    open_files_add(&root->metadata);
 
     save_sector(drive);
 }
 
 File *file_get_root(DiskDrive drive) {
-    if (openFiles == NULL) {
+    if (open_files_count() == 0) {
         makeFileSystem(drive);
     }
     load_sector(drive, superBlockCache.rootDirectory);
     FileFirstBlock *block = (FileFirstBlock *) disk_drive_get_buffer(drive);
-    memcpy(&openFiles->file, &block->metadata, sizeof(File));
-    return &openFiles->file;
+    memcpy(&open_files.items[0].data, block, sizeof(File));
+
+    return &open_files.items[0].data;
 }
 
 // Create/Delete
@@ -280,19 +271,25 @@ File *file_create(DiskDrive drive, File *parent, const char *name, int type) {
     header->metadata.size = 0;
     header->metadata.lastModified = motherboard_get_minecraft_world_time();
 
-    FileListNode *node = malloc(sizeof(FileListNode));
-    memcpy(&node->file, &header->metadata, sizeof(File));
-    DL_APPEND(openFiles, node);
+    File *file = open_files_add(&header->metadata);
 
     save_sector(drive);
 
     DirectoryEntry newEntry;
-    newEntry.firstBlock = node->file.firstBlock;
-    memcpy(newEntry.name, node->file.name, FILE_MAX_NAME_SIZE);
+    newEntry.firstBlock = file->firstBlock;
+    memcpy(newEntry.name, file->name, FILE_MAX_NAME_SIZE);
 
     file_append(drive, parent, &newEntry, sizeof(DirectoryEntry));
 
-    return &node->file;
+    // add parent folder link
+    if(type == FILE_TYPE_DIRECTORY){
+        DirectoryEntry parentEntry;
+        parentEntry.firstBlock = parent->firstBlock;
+        memcpy(parentEntry.name, "..", 3);
+        file_append(drive, file, &parentEntry, sizeof(DirectoryEntry));
+    }
+
+    return file;
 }
 
 void file_truncate(DiskDrive drive, File *file, int size) {
@@ -376,7 +373,7 @@ int file_remove_child(DiskDrive drive, File *parent, File *child) {
 
 void file_delete(DiskDrive drive, File *parent, File *file) {
     // you can delete the root directory
-    if(file == &openFiles->file) return;
+    if(file == &open_files.items[0].data) return;
     if (!file_remove_child(drive, parent, file)) return;
 
     if (file->type == FILE_TYPE_DIRECTORY) {
@@ -412,23 +409,19 @@ File *file_open(DiskDrive drive, File *parent, const char *name) {
     if (sector == NULL_SECTOR) return NULL;
 
     load_sector(drive, sector);
-    FileFirstBlock *header = (FileFirstBlock *) disk_drive_get_buffer(drive);
-    FileListNode *node = malloc(sizeof(FileListNode));
-    memcpy(&node->file, &header->metadata, sizeof(File));
-    DL_APPEND(openFiles, node);
+    FileFirstBlock *header = (FileFirstBlock *) disk_drive_get_buffer(drive);\
 
-    return &node->file;
+    return open_files_add(&header->metadata);
 }
 
 void file_close(DiskDrive drive IGNORED, File *file) {
     if (file == NULL) return;
     // root folder cache
-    if (file == &openFiles->file) return;
+    if (file == &open_files.items[0].data) return;
     if (open_files_count() <= 1) return;
 
     if(file_is_open(file)){
-        DL_DELETE(openFiles, (FileListNode *) file);
-        free(file);
+        open_files_remove(file);
     }
 }
 

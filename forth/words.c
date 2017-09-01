@@ -6,11 +6,13 @@
 // https://www.forth.com/starting-forth/1-forth-stacks-dictionary/
 //
 
+#include <api/math.h>
+#include <api/robot.h>
+#include "../stdlib/filesystem.h"
 #include "dependencies.h"
 #include "words.h"
 #include "dictionary.h"
 #include "stack.h"
-#include "../stdlib/filesystem.h"
 
 /*** VARIABLES ***/
 
@@ -23,8 +25,8 @@ char tib[TIB_SIZE];
 
 char wordBuffer[WORD_BUFFER_SIZE];
 
+char blockBuffer[1024];
 int currentBlock = 0;
-char *block;
 
 // >IN (offset of the input buffer to start reading new characters)
 Word *moreIn;
@@ -48,6 +50,10 @@ Word *semi_colon;
 Word *state;
 // (.")
 Word *int_dot_quote;
+// FILE
+Word *fileWord;
+// FOLDER
+Word *folderWord;
 
 Word *currentWord = NULL;
 Word *currentWordList = NULL;
@@ -65,6 +71,68 @@ void *allot(int size) {
     char *aux = dp;
     dp = aux + size;
     return aux;
+}
+
+int byteToIntCeil(int bytes) {
+    int ints = bytes / 4;
+    int rest = bytes - ints * 4;
+
+    return ints + ((rest != 0) ? 1 : 0);
+}
+
+/**************/
+/*** DEBUG ***/
+/**************/
+
+//void printWord(Word *word) {
+//    printf("Word(ptr = %x (%d),\n", (unsigned int) word, (int) word);
+//    printf("name = '%s'(%d), \n", word->name->array, word->name->size);
+//    printf("flags = %d (%s), \n", word->flags, (word->flags & IMMEDIATE_BIT_MASK) ? "IMMEDIATE" : "NORMAL");
+//    printf("next = %d (%s), \n", (int) word->next, word->next ? word->next->name->array : "NULL");
+//    int type = word->code == readVariableAddress
+//               ? 0//"VARIABLE"
+//               : word->code == readVariableValue
+//                 ? 1//"CONSTANT"
+//                 : word->code == fun_run_list
+//                   ? 2 //"COMPILED WORD"
+//                   : 3; //"NATIVE"
+//
+//    printf("code = %d (%s)", (int) word->code,
+//           type == 0 ? "VARIABLE" : type == 1 ? "CONSTANT" : type == 2 ? "COMPILED WORD" : "NATIVE");
+//
+//    if (type == 0 || type == 1) {
+//        printf(", \nvalue = %d (0x%x)", word->data[0], word->data[0]);
+//    } else if (type == 2) {
+//        printf(", \nwords: [ ");
+//        Word *item;
+//        for (int i = 0;; ++i) {
+//            item = (Word *) word->data[i];
+//            if (item == lit) {
+//                printf("LIT(%d) ", word->data[++i]);
+//            } else if (item == int_dot_quote) {
+//                printf(".\"(");
+//                char *str = (char *) (word->data + i + 1);
+//                int count = printf("%s", str) + 1;
+//                i += byteToIntCeil(count);
+//                printf(")");
+//            } else {
+//                printf("%s(%x) ", item->name->array, (unsigned int) (word->data + i));
+//            }
+//
+//            if (item == int_exit || item == NULL) break;
+//        }
+//        printf("]");
+//    }
+//    printf(")");
+//}
+
+// DEBUG (--) name
+void fun_debug() {
+//    fun_minus_find();
+//    if (popData()) {
+//        Word *word = (Word *) popData();
+//        printWord(word);
+//    }
 }
 
 /**************/
@@ -354,7 +422,7 @@ void fun_dot() {
 // .S (--)  prints the stack
 void fun_dot_s() {
     int i;
-    for (i = dataStackPtr - 1; i >= 0; i--) {
+    for (i = 0; i < dataStackPtr; i++) {
         printNumber(dataStack[i], *base->data);
         putchar(' ');
     }
@@ -366,55 +434,6 @@ void fun_words() {
     for (word = dictionary; word != NULL; word = word->next) {
         printf("%s ", word->name->array);
     }
-}
-
-int byteToIntCeil(int bytes) {
-    int ints = bytes / 4;
-    int rest = bytes - ints * 4;
-
-    return ints + ((rest != 0) ? 1 : 0);
-}
-
-void printWord(Word *word) {
-    printf("Word(ptr = %x (%d),\n", (unsigned int) word, (int) word);
-    printf("name = '%s'(%d), \n", word->name->array, word->name->size);
-    printf("flags = %d (%s), \n", word->flags, (word->flags & IMMEDIATE_BIT_MASK) ? "IMMEDIATE" : "NORMAL");
-    printf("next = %d (%s), \n", (int) word->next, word->next ? word->next->name->array : "NULL");
-    int type = word->code == readVariableAddress
-               ? 0//"VARIABLE"
-               : word->code == readVariableValue
-                 ? 1//"CONSTANT"
-                 : word->code == fun_run_list
-                   ? 2 //"COMPILED WORD"
-                   : 3; //"NATIVE"
-
-    printf("code = %d (%s)", (int) word->code,
-           type == 0 ? "VARIABLE" : type == 1 ? "CONSTANT" : type == 2 ? "COMPILED WORD" : "NATIVE");
-
-    if (type == 0 || type == 1) {
-        printf(", \nvalue = %d (0x%x)", word->data[0], word->data[0]);
-    } else if (type == 2) {
-        printf(", \nwords: [ ");
-        Word *item;
-        for (int i = 0;; ++i) {
-            item = (Word *) word->data[i];
-            if (item == lit) {
-                printf("LIT(%d) ", word->data[++i]);
-            } else if (item == int_dot_quote) {
-                printf(".\"(");
-                char *str = (char *) (word->data + i + 1);
-                int count = printf("%s", str) + 1;
-                i += byteToIntCeil(count);
-                printf(")");
-            } else {
-                printf("%s(%x) ", item->name->array, (unsigned int) (word->data + i));
-            }
-
-            if (item == int_exit || item == NULL) break;
-        }
-        printf("]");
-    }
-    printf(")");
 }
 
 // ABORT" (--)
@@ -464,23 +483,71 @@ void fun_int_dot_quote() {
 /*** Disk IO ***/
 /***************/
 
+inline DiskDrive getDisk() {
+    DiskDrive drive = motherboard_get_floppy_drive();
+    if (folderWord->data[0] == 0) {
+        makeFileSystem(drive);
+        folderWord->data[0] = (int) file_get_root(drive);
+    }
+    return drive;
+}
+
+inline File *getCurrentFolder() {
+    return (File *) folderWord->data[0];
+}
+
+inline int hasDisk() {
+    return disk_drive_has_disk(motherboard_get_floppy_drive());
+}
+
 // BLOCK (n -- addr)
 void fun_block() {
     int block = popData();
-    DiskDrive drive = motherboard_get_floppy_drive();
 
-    if (disk_drive_has_disk(drive) && block < disk_drive_get_num_sectors(drive)) {
-
-        disk_drive_set_current_sector(drive, block - 1);
-        disk_drive_signal(drive, DISK_DRIVE_SIGNAL_READ);
-
-        motherboard_sleep((i8) disk_drive_get_access_time(drive));
-
-        currentBlock = block;
-        pushData((int) disk_drive_get_buffer(drive));
-    } else {
-        pushData(0);
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
     }
+    DiskDrive drive = getDisk();
+
+    if (*fileWord->data == 0) {
+        printf("No file loaded\n");
+        pushData(0);
+        return;
+    }
+
+    if (currentBlock != 0 && currentBlock != block) {
+        file_write(drive, (File *) *fileWord->data, blockBuffer, currentBlock * 1024, 1024);
+    }
+
+    currentBlock = block;
+    int read = file_read(drive, (File *) *fileWord->data, blockBuffer, currentBlock * 1024, 1024);
+
+    // fill remaining bytes with 0
+    if (read < 1024) {
+        for (int i = read; i < (1024 - read); ++i) {
+            blockBuffer[i] = 0;
+        }
+    }
+    pushData((int) blockBuffer);
+}
+
+// FLUSH (--)
+void fun_flush() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (*fileWord->data == 0) {
+        printf("No file loaded\n");
+        return;
+    }
+
+    int writen = file_write(drive, (File *) *fileWord->data, blockBuffer, currentBlock * 1024, 1024);
+    printf("Writen %d bytes\n", writen);
 }
 
 // LIST (n --)
@@ -489,16 +556,26 @@ void fun_list() {
     if (currentBlock != block) {
         pushData(block);
         fun_block();
+        if (popData() == 0) {
+            return;
+        }
     }
-    DiskDrive drive = motherboard_get_floppy_drive();
-    char *buffer = (char *) disk_drive_get_buffer(drive);
+    if (!hasDisk()) {
+        return;
+    }
 
+    putchar('\n');
     for (int i = 0; i < 16; ++i) {
         putchar(digits[i / *base->data]);
         putchar(digits[i % *base->data]);
         putchar(' ');
         for (int j = 0; j < 64; ++j) {
-            putchar(buffer[i * 64 + j]);
+            char c = blockBuffer[i * 64 + j];
+            if (c == 0) {
+                putchar('.');
+            } else {
+                putchar(c);
+            }
         }
         putchar('\n');
     }
@@ -517,20 +594,6 @@ void fun_load() {
     fun_interpret();
 }
 
-// FLUSH (--)
-void fun_flush() {
-    int block = currentBlock;
-    DiskDrive drive = motherboard_get_floppy_drive();
-
-    if (block != 0 && disk_drive_has_disk(drive) && block < disk_drive_get_num_sectors(drive)) {
-
-        disk_drive_set_current_sector(drive, block - 1);
-        disk_drive_signal(drive, DISK_DRIVE_SIGNAL_WRITE);
-
-        motherboard_sleep((i8) disk_drive_get_access_time(drive));
-    }
-}
-
 // WIPE (--)
 void fun_wipe() {
     int block = currentBlock;
@@ -538,9 +601,7 @@ void fun_wipe() {
         pushData(block);
         fun_block();
     }
-    DiskDrive drive = motherboard_get_floppy_drive();
-    char *buffer = (char *) disk_drive_get_buffer(drive);
-    memset(buffer, ' ', 1024);
+    memset(blockBuffer, ' ', 1024);
 }
 
 // PP (--)
@@ -551,21 +612,149 @@ void fun_pp() {
         pushData(block);
         fun_block();
     }
-    DiskDrive drive = motherboard_get_floppy_drive();
-    char *buffer = (char *) disk_drive_get_buffer(drive);
+
+    if (line >= 16) {
+        printf("Invalid line: %d\n", line);
+        return;
+    }
 
     int totalSize = *hashTib->data;
     int alreadyRead = *moreIn->data + 1;
     int size = totalSize - alreadyRead;
     if (size > 0) {
-        memcpy(buffer + line * 64, tib + alreadyRead, (size_t) size);
+        memcpy(blockBuffer + line * 64, tib + alreadyRead, (size_t) size);
         *moreIn->data += size + 1;
     }
+}
+
+// OPEN (--) name
+void fun_open() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+
+    pushData(' ');
+    fun_word();
+    String *name = (String *) popData();
+    if (name->size == 0) return;
+
+    if (*fileWord->data != 0) {
+        file_close(drive, (File *) *fileWord->data);
+        *fileWord->data = 0;
+    }
+    *fileWord->data = (int) file_open(drive, getCurrentFolder(), name->array);
+    currentBlock = 0;
+}
+
+// CD (--) name
+void fun_cd() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+
+    pushData(' ');
+    fun_word();
+    String *name = (String *) popData();
+    if (name->size == 0) return;
+
+    File *file = file_open(drive, (File *) *folderWord->data, name->array);
+    if (file == NULL) {
+        printf("Unable to find %s\n", name->array);
+        return;
+    }
+    if (file->type != FILE_TYPE_DIRECTORY) {
+        printf("Not a directory\n");
+        return;
+    }
+    *folderWord->data = (int) file;
+}
+
+// MKFILE (--) name
+void fun_mkfile() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+
+    pushData(' ');
+    fun_word();
+    String *name = (String *) popData();
+    if (name->size == 0) return;
+
+    file_close(drive, file_create(drive, getCurrentFolder(), name->array, FILE_TYPE_NORMAL));
+}
+
+// MKDIR (--) name
+void fun_mkdir() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+
+    pushData(' ');
+    fun_word();
+    String *name = (String *) popData();
+    if (name->size == 0) return;
+
+    file_close(drive, file_create(drive, getCurrentFolder(), name->array, FILE_TYPE_DIRECTORY));
+}
+
+// LS (--)
+void fun_ls() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+    File *folder = getCurrentFolder();
+    int entryCount = folder->size / sizeof(DirectoryEntry);
+    DirectoryEntry entry;
+    for (int i = 0; i < entryCount; ++i) {
+        file_read(drive, folder, &entry, sizeof(DirectoryEntry) * i, sizeof(DirectoryEntry));
+        printf("%s\n", entry.name);
+    }
+}
+
+// DELETE (--) name
+void fun_delete() {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return;
+    }
+
+    DiskDrive drive = getDisk();
+
+    pushData(' ');
+    fun_word();
+    String *name = (String *) popData();
+    if (name->size == 0) return;
+
+    File *file = file_open(drive, getCurrentFolder(), name->array);
+    file_delete(drive, getCurrentFolder(), file);
 }
 
 /*********************/
 /*** Stack helpers ***/
 /*********************/
+
+// SWAP (A B -- B A)
+void fun_swap() {
+    int b = popData();
+    int a = popData();
+    pushData(b);
+    pushData(a);
+}
 
 // DUP (n -- n n)
 void fun_dup() {
@@ -671,6 +860,78 @@ void fun_colon() {
 }
 
 /*********************/
+/***     Time      ***/
+/*********************/
+
+void fun_ticks() {
+    int ticks = popData();
+    while (ticks > 0) {
+        int sleep = min(ticks, 127);
+        ticks -= sleep;
+        motherboard_sleep((i8) sleep);
+    }
+}
+
+void fun_times_run() {
+    int times = popData();
+    fun_minus_find();
+    int flag = popData();
+    if (flag) {
+        int addrs = popData();
+        for (int i = 0; i < times; ++i) {
+            pushData(addrs);
+            fun_execute();
+        }
+    }
+
+}
+
+/*********************/
+/***     Robot     ***/
+/*********************/
+
+static void robot_signal(int signal) {
+    struct mining_robot *robot = (struct mining_robot *) 0xFF030000;
+
+    ((volatile struct mining_robot *) robot)->signal = (i8) signal;
+    motherboard_sleep(robot->cooldown);
+
+    if (robot->requestStatus == ROBOT_REQUEST_STATUS_SUCCESSFUL) {
+        pushData(1);
+    } else {
+        pushData(0);
+    }
+}
+
+void fun_mine() {
+    robot_signal(ROBOT_SIGNAL_MINE_BLOCK);
+}
+
+void fun_front() {
+    robot_signal(ROBOT_SIGNAL_MOVE_FORWARD);
+}
+
+void fun_back() {
+    robot_signal(ROBOT_SIGNAL_MOVE_BACK);
+}
+
+void fun_left() {
+    robot_signal(ROBOT_SIGNAL_ROTATE_LEFT);
+}
+
+void fun_right() {
+    robot_signal(ROBOT_SIGNAL_ROTATE_RIGHT);
+}
+
+void fun_up() {
+    robot_signal(ROBOT_SIGNAL_ROTATE_UP);
+}
+
+void fun_down() {
+    robot_signal(ROBOT_SIGNAL_ROTATE_DOWN);
+}
+
+/*********************/
 /***  Interpreter  ***/
 /*********************/
 
@@ -699,7 +960,7 @@ void fun_word() {
         buffer = tib;
         size = TIB_SIZE;
     } else {
-        buffer = block;
+        buffer = blockBuffer;
         size = BLOCK_SIZE;
     }
 
@@ -837,7 +1098,7 @@ void fun_expect() {
         printf(">");
     }
     fgets(addr, size, stdin);
-    putchar('\n');
+    putchar(' ');
     *span->data = strlen(addr);
 }
 
@@ -858,94 +1119,8 @@ void fun_forth() {
     fun_interpret();
 
     if (*span->data != 0) {
-        printf(" ok\n");
+        printf("ok\n");
     }
-}
-
-// DEBUG (--) name
-void fun_debug() {
-//    fun_minus_find();
-//    if (popData()) {
-//        Word *word = (Word *) popData();
-//        printWord(word);
-//    }
-    DiskDrive drive = motherboard_get_floppy_drive();
-
-    pushData(' ');
-    fun_word();
-    String *name = (String *) popData();
-
-    File *root = file_get_root(drive);
-    printf("Root: id: %d, name = '%s', type = %d, nextBlock = %d, size = %d, lastModified = %d, parent = %d\n",
-           root->firstBlock, root->name, root->type, root->nextBlock, root->size, root->lastModified, root->parent);
-    File *file = file_create(drive, root, name->array, FILE_TYPE_NORMAL);
-    printf("File created: id: %d, name = '%s', type = %d, nextBlock = %d, size = %d, lastModified = %d, parent = %d\n",
-           file->firstBlock, file->name, file->type, file->nextBlock, file->size, file->lastModified, file->parent);
-}
-
-void fun_ls() {
-    DiskDrive drive = motherboard_get_floppy_drive();
-    File *root = file_get_root(drive);
-    int entryCount = root->size / sizeof(DirectoryEntry);
-    DirectoryEntry entry;
-    for (int i = 0; i < entryCount; ++i) {
-        file_read(drive, root, &entry, sizeof(DirectoryEntry) * i, sizeof(DirectoryEntry));
-        printf("%s(%d)\n", entry.name, entry.firstBlock);
-    }
-}
-
-void fun_write() {
-    DiskDrive drive = motherboard_get_floppy_drive();
-    File *root = file_get_root(drive);
-
-    pushData('"');
-    fun_word();
-    String *name = (String *) popData();
-
-    File *file1 = file_open(drive, root, name->array);
-    if (file1 == NULL) return;
-
-    printf("Opened file %s(%d)\n", file1->name, file1->firstBlock);
-    char buff[] = "abcdefghijklmnopqrstuvwxyz";
-    int size = sizeof(buff);
-    file_write(drive, file1, buff, 0, size);
-
-    file_close(drive, file1);
-}
-
-void fun_read() {
-    DiskDrive drive = motherboard_get_floppy_drive();
-    File *root = file_get_root(drive);
-
-    pushData('"');
-    fun_word();
-    String *name = (String *) popData();
-
-    File *file1 = file_open(drive, root, name->array);
-    if (file1 == NULL) return;
-
-    char buff[80];
-    int read, offset = 0;
-    do {
-        read = file_read(drive, file1, buff, offset, 80);
-        offset += read;
-        if (read != 0) {
-            printf("%s\n", buff);
-        }
-    } while (read != 0);
-    file_close(drive, file1);
-}
-
-void fun_delete(){
-    DiskDrive drive = motherboard_get_floppy_drive();
-    File *root = file_get_root(drive);
-
-    pushData('"');
-    fun_word();
-    String *name = (String *) popData();
-
-    File* file = file_open(drive, root, name->array);
-    file_delete(drive, root, file);
 }
 
 //TODO
@@ -955,13 +1130,12 @@ void fun_delete(){
 
 void init() {
     fun_align_word();
-    block = (char *) disk_drive_get_buffer(motherboard_get_floppy_drive());
 
     extendDictionary(createWord("FORTH", fun_forth));
     extendDictionary(createWord("QUERY", fun_query));
     extendDictionary(createWord("INTERPRET", fun_interpret));
     extendDictionary(createConstant("TIB", (int) tib));
-    extendDictionary(createConstant("BLOCK", (int) block));
+    extendDictionary(createConstant("BLOCK", (int) blockBuffer));
     extendDictionary(createConstant("CELL", 4));
     extendDictionary(createConstant("SPACE", ' '));
     moreIn = extendDictionary(createVariable(">IN", 0));
@@ -1006,13 +1180,13 @@ void init() {
     extendDictionary(createWord(">DOES", fun_more_does));
     extendDictionary(createWord("BLOCK", fun_block));
     extendDictionary(createWord("KEY", fun_key));
-    extendDictionary(createWord("LIST", fun_list));
-    extendDictionary(createWord("LOAD", fun_load));
-    extendDictionary(createWord("WIPE", fun_wipe));
-    extendDictionary(createWord("PP", fun_pp));
-    extendDictionary(createWord("FLUSH", fun_flush));
+    extendDictionary(createWord("TICKS", fun_ticks));
+
+    extendDictionary(createWord("SWAP", fun_swap));
     extendDictionary(createWord("DUP", fun_dup));
     extendDictionary(createWord("DROP", fun_drop));
+    extendDictionary(createWord("TIMES", fun_times_run));
+
     extendDictionary(createWord(":", fun_colon));
     semi_colon = extendDictionary(createInmediateWord(";", fun_semi_colon));
     lit = extendDictionary(createWord("LIT", fun_lit));
@@ -1020,9 +1194,29 @@ void init() {
     extendDictionary(createWord("ABORT\"", fun_abort));
     extendDictionary(createInmediateWord(".\"", fun_dot_quote));
     int_dot_quote = extendDictionary(createWord("(.\")", fun_int_dot_quote));
-    extendDictionary(createWord("DEBUG", fun_debug));
+
+    // IO
+    fileWord = extendDictionary(createVariable("FILE", 0));
+    folderWord = extendDictionary(createVariable("FOLDER", 0));
+    extendDictionary(createWord("LIST", fun_list));
+    extendDictionary(createWord("LOAD", fun_load));
+    extendDictionary(createWord("WIPE", fun_wipe));
+    extendDictionary(createWord("PP", fun_pp));
+    extendDictionary(createWord("FLUSH", fun_flush));
     extendDictionary(createWord("LS", fun_ls));
-    extendDictionary(createWord("WRITE", fun_write));
-    extendDictionary(createWord("READ", fun_read));
+    extendDictionary(createWord("OPEN", fun_open));
+    extendDictionary(createWord("MKDIR", fun_mkdir));
+    extendDictionary(createWord("MKFILE", fun_mkfile));
+    extendDictionary(createWord("CD", fun_cd));
     extendDictionary(createWord("DELETE", fun_delete));
+    //robot
+    extendDictionary(createWord("MINE", fun_mine));
+    extendDictionary(createWord("FRONT", fun_front));
+    extendDictionary(createWord("BACK", fun_back));
+    extendDictionary(createWord("LEFT", fun_left));
+    extendDictionary(createWord("RIGHT", fun_right));
+    extendDictionary(createWord("UP", fun_up));
+    extendDictionary(createWord("DOWN", fun_down));
+    //debug
+    extendDictionary(createWord("DEBUG", fun_debug));
 }

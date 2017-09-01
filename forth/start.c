@@ -14,7 +14,7 @@ int main() {
     init();
 
     while (!exitCode){
-        fun_forth(dictionary);
+        fun_forth();
     }
 
     return exitCode;
