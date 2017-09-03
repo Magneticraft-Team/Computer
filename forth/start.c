@@ -8,7 +8,8 @@
 int exitCode = 0;
 
 /*** Main Driver ***/
-int main() {
+int __start()  {
+
     clear_screen();
     printf("FORTH 1.0\n");
     init();

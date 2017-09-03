@@ -86,7 +86,7 @@ void main() {
         printf("Loaded %d sectors\n", loaded);
         if(loaded > 0){
             printf("Jumping to boot...\n");
-            asm volatile("j 0");
+            asm volatile("jal 0");
         }
     } else {
         printf("No floppy disk found\n");

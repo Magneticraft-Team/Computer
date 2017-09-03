@@ -6,7 +6,7 @@
 #include "api/stdio.h"
 #include "filesystem.h"
 
-int main() {
+int __start() {
     char input[80];
     DiskDrive drive = motherboard_get_floppy_drive();
     clear_screen();

@@ -177,7 +177,7 @@ void jumpLine() {
 }
 
 char *fgets(char *str, int n, FILE *stream) {
-    if(stream != NULL && stream->readFunc != NULL){
+    if (stream != NULL && stream->readFunc != NULL) {
         stream->readFunc(str, n);
         return str;
     }
@@ -262,12 +262,10 @@ void putchar(int c) {
 
 ///////////// FILE IO /////////////
 
-static int readStdin(char *str, int n){
+static int readStdin(char *str, int n) {
     int i;
     for (i = 0; i < n - 1; i++) {
         int c = getchar();
-
-        if(iscntrl(c)) continue;
 
         if (c == 13 || c == 10) {
             break;
@@ -278,7 +276,7 @@ static int readStdin(char *str, int n){
                 unputchar();
             }
             i--;
-        } else {
+        } else if (!iscntrl(c)) {
             str[i] = (char) c;
             putchar(c);
         }
@@ -287,7 +285,7 @@ static int readStdin(char *str, int n){
     return i;
 }
 
-static int writeStdout(char *str, int n){
+static int writeStdout(char *str, int n) {
     int j;
     for (j = 0; j < n; j++) {
         putchar((int) str[j]);
@@ -301,9 +299,9 @@ FILE _stdout = {1, NULL, &writeStdout, NULL};
 
 FILE _stderr = {2, NULL, &writeStdout, NULL};
 
-FILE* stdin = &_stdin;
-FILE* stdout = &_stdout;
-FILE* stderr = &_stderr;
+FILE *stdin = &_stdin;
+FILE *stdout = &_stdout;
+FILE *stderr = &_stderr;
 
 // TODO implement this to work with filesystem.h
 FILE *fopen(const char *name IGNORED, const char *flags IGNORED) {

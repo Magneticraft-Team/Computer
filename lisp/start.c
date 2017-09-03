@@ -86,7 +86,7 @@ void init() {
 }
 
 /*** Main Driver ***/
-int main() {
+int __start() {
     clear_screen();
     init();
     printf("Lips Interpreter 1.0\n");

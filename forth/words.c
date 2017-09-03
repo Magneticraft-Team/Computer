@@ -1258,4 +1258,7 @@ void init() {
     extendDictionary(createWord("DOWN", fun_down));
     //debug
     extendDictionary(createWord("DEBUG", fun_debug));
+
+    fun_free();
+    printf("%d bytes free\n", popData());
 }
