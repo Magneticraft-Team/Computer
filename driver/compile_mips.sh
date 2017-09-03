@@ -19,8 +19,7 @@ fi
 
 api_files="motherboard.c monitor.c network.c disk_drive.c"
 c_files="start.c $api_files"
-asm_files="boot.asm"
-linker_script="linker.ld"
+linker_script="../common/linker.ld"
 temp_o="output.o"
 output="output.bin"
 linker_flags="-Wl,-T,$linker_script"
@@ -37,13 +36,6 @@ if [ ! -e 's' ]; then
     mkdir s
 fi
 cd ..
-
-echo "Compiling asm"
-for i in ${asm_files} ; do
-    name=`echo ${i} | sed -r 's/([^/]+\/)?([^/]+)\.\w+$/\2/g'`
-    mipsel-none-elf-as ${i} -o out/${name}.o || `echo "Error in asm" && exit 1`
-    compiled_files="$compiled_files out/$name.o"
-done
 
 echo "Compiling c"
 for i in ${c_files} ; do

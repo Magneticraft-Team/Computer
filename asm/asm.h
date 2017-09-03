@@ -7,6 +7,8 @@
 
 #include "dependencies.h"
 
+int stringDiff(const char *const a, const char *const b);
+
 int loopTick();
 
 void printCode();

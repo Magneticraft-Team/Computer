@@ -84,7 +84,7 @@ void readToken() {
     // Number
     if (isdigit(currentChar)) {
         tokenType = NUMBER;
-        readNumber();
+        readNumber(currentChar);
         return;
     }
 
