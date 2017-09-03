@@ -183,6 +183,7 @@ void *malloc(unsigned size) {
         // aligning to word boundaries
         fsize += 3;
         fsize &= ~3;
+        //init
         malloc_init((void *) fsize, motherboard_get_memory_size() - fsize);
         malloc_init_flag = 1;
         fsize = 0;

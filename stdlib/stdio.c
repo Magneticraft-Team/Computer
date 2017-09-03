@@ -7,6 +7,7 @@
 #include "api/stdarg.h"
 #include "api/string.h"
 #include "api/stdlib.h"
+#include "api/ctype.h"
 
 #define SPACE ((char)32)
 
@@ -265,6 +266,9 @@ static int readStdin(char *str, int n){
     int i;
     for (i = 0; i < n - 1; i++) {
         int c = getchar();
+
+        if(iscntrl(c)) continue;
+
         if (c == 13 || c == 10) {
             break;
         }

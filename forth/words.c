@@ -433,6 +433,16 @@ void fun_words() {
     }
 }
 
+// FREE (-- n)
+void fun_free(){
+    int totalRam = motherboard_get_memory_size();
+    int ramWithoutStart = totalRam - ((int)dp);
+    int stackSize = 0xffff - ((int)&totalRam);
+
+    int freeRam = ramWithoutStart - stackSize;
+    pushData(freeRam);
+}
+
 // ABORT" (--)
 void fun_abort() {
     pushData('\"');
@@ -802,6 +812,27 @@ void fun_lit() {
     pushData(currentWordList->data[++instructionOffset]);
 }
 
+// BRANCH? ( n --)
+void fun_q_branch() {
+    int cond = popData();
+    int jump = currentWordList->data[++instructionOffset];
+    if (cond) {
+        instructionOffset = jump;
+    }
+}
+
+// BRANCH (--)
+void fun_branch() {
+    int jump = currentWordList->data[instructionOffset + 1];
+    instructionOffset = jump;
+}
+
+
+// IF (n --)
+void fun_if(){
+
+}
+
 /****************/
 /*** Compiler ***/
 /****************/
@@ -879,8 +910,9 @@ void fun_times_run() {
             pushData(addrs);
             fun_execute();
         }
+    } else {
+        printf("Not a word\n");
     }
-
 }
 
 /*********************/
@@ -888,16 +920,19 @@ void fun_times_run() {
 /*********************/
 
 static void robot_signal(int signal) {
-    struct mining_robot *robot = (struct mining_robot *) 0xFF030000;
+    volatile struct mining_robot *robot = (struct mining_robot *) 0xFF030000;
 
-    ((volatile struct mining_robot *) robot)->signal = (i8) signal;
+    // Send signal
+    robot->signal = (i8) signal;
+
+    // wait for robot response
+    motherboard_sleep(1);
+
+    // wait for task to finish
     motherboard_sleep(robot->cooldown);
 
-    if (robot->requestStatus == ROBOT_REQUEST_STATUS_SUCCESSFUL) {
-        pushData(1);
-    } else {
-        pushData(0);
-    }
+    // push result to the stack
+    pushData(robot->failReason);
 }
 
 void fun_mine() {
@@ -1175,14 +1210,20 @@ void init() {
     extendDictionary(createWord("'", fun_quote));
     extendDictionary(createWord(">BODY", fun_more_body));
     extendDictionary(createWord(">DOES", fun_more_does));
+    extendDictionary(createWord("FREE", fun_free));
     extendDictionary(createWord("BLOCK", fun_block));
     extendDictionary(createWord("KEY", fun_key));
     extendDictionary(createWord("TICKS", fun_ticks));
 
+    // stack
     extendDictionary(createWord("SWAP", fun_swap));
     extendDictionary(createWord("DUP", fun_dup));
     extendDictionary(createWord("DROP", fun_drop));
     extendDictionary(createWord("TIMES", fun_times_run));
+    //flow
+    extendDictionary(createWord("BRANCH?", fun_q_branch));
+    extendDictionary(createWord("BRANCH", fun_branch));
+
 
     extendDictionary(createWord(":", fun_colon));
     semi_colon = extendDictionary(createInmediateWord(";", fun_semi_colon));
@@ -1209,6 +1250,7 @@ void init() {
     //robot
     extendDictionary(createWord("MINE", fun_mine));
     extendDictionary(createWord("FRONT", fun_front));
+    extendDictionary(createWord("FORWARD", fun_front));
     extendDictionary(createWord("BACK", fun_back));
     extendDictionary(createWord("LEFT", fun_left));
     extendDictionary(createWord("RIGHT", fun_right));
