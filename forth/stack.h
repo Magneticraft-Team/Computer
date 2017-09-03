@@ -20,4 +20,14 @@ int popData();
 
 int peekData();
 
+void emptyRStack();
+
+int isRStackEmpty();
+
+void pushR(int data);
+
+int popR();
+
+int peekR();
+
 #endif //MAGNETICRAFTCOMPUTER_STACK_H

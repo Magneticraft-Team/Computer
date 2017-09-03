@@ -84,7 +84,7 @@ Word *createWord(const char *name, Func fun) {
     return newWord(createString(name), fun, 0, 0);
 }
 
-Word *createInmediateWord(const char *name, Func fun) {
+Word *createImmediateWord(const char *name, Func fun) {
     return newWord(createString(name), fun, 1, 0);
 }
 

@@ -15,7 +15,7 @@ String *createString(const char *str);
 Word *newWord(String *name, Func function, int inmed, int count, ...);
 
 Word *createWord(const char *name, Func function);
-Word *createInmediateWord(const char *name, Func function);
+Word *createImmediateWord(const char *name, Func function);
 
 Word *createVariable(const char *name, int data);
 

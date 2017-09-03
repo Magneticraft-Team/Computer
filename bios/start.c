@@ -91,7 +91,7 @@ void main() {
     } else {
         printf("No floppy disk found\n");
     }
-    printf("Halt");
+    printf("Halting cpu");
 }
 
 

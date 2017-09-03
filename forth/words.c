@@ -51,6 +51,10 @@ Word *int_dot_quote;
 Word *fileWord;
 // FOLDER
 Word *folderWord;
+// BRANCH?
+Word *branchQWord;
+// BRANCH
+Word *branchWord;
 
 Word *currentWord = NULL;
 Word *currentWordList = NULL;
@@ -81,55 +85,60 @@ int byteToIntCeil(int bytes) {
 /*** DEBUG ***/
 /**************/
 
-//void printWord(Word *word) {
-//    printf("Word(ptr = %x (%d),\n", (unsigned int) word, (int) word);
-//    printf("name = '%s'(%d), \n", word->name->array, word->name->size);
-//    printf("flags = %d (%s), \n", word->flags, (word->flags & IMMEDIATE_BIT_MASK) ? "IMMEDIATE" : "NORMAL");
-//    printf("next = %d (%s), \n", (int) word->next, word->next ? word->next->name->array : "NULL");
-//    int type = word->code == readVariableAddress
-//               ? 0//"VARIABLE"
-//               : word->code == readVariableValue
-//                 ? 1//"CONSTANT"
-//                 : word->code == fun_run_list
-//                   ? 2 //"COMPILED WORD"
-//                   : 3; //"NATIVE"
-//
-//    printf("code = %d (%s)", (int) word->code,
-//           type == 0 ? "VARIABLE" : type == 1 ? "CONSTANT" : type == 2 ? "COMPILED WORD" : "NATIVE");
-//
-//    if (type == 0 || type == 1) {
-//        printf(", \nvalue = %d (0x%x)", word->data[0], word->data[0]);
-//    } else if (type == 2) {
-//        printf(", \nwords: [ ");
-//        Word *item;
-//        for (int i = 0;; ++i) {
-//            item = (Word *) word->data[i];
-//            if (item == lit) {
-//                printf("LIT(%d) ", word->data[++i]);
-//            } else if (item == int_dot_quote) {
-//                printf(".\"(");
-//                char *str = (char *) (word->data + i + 1);
-//                int count = printf("%s", str) + 1;
-//                i += byteToIntCeil(count);
-//                printf(")");
-//            } else {
-//                printf("%s(%x) ", item->name->array, (unsigned int) (word->data + i));
-//            }
-//
-//            if (item == int_exit || item == NULL) break;
-//        }
-//        printf("]");
-//    }
-//    printf(")");
-//}
+void printWord(Word *word) {
+    printf("Word(ptr = %x (%d),\n", (unsigned int) word, (int) word);
+    printf("name = '%s'(%d), \n", word->name->array, word->name->size);
+    printf("flags = %d (%s), \n", word->flags, (word->flags & IMMEDIATE_BIT_MASK) ? "IMMEDIATE" : "NORMAL");
+    printf("next = %d (%s), \n", (int) word->next, word->next ? word->next->name->array : "NULL");
+    int type = word->code == readVariableAddress
+               ? 0//"VARIABLE"
+               : word->code == readVariableValue
+                 ? 1//"CONSTANT"
+                 : word->code == fun_run_list
+                   ? 2 //"COMPILED WORD"
+                   : 3; //"NATIVE"
+
+    printf("code = %d (%s)", (int) word->code,
+           type == 0 ? "VARIABLE" : type == 1 ? "CONSTANT" : type == 2 ? "COMPILED WORD" : "NATIVE");
+
+    if (type == 0 || type == 1) {
+        printf(", \nvalue = %d (0x%x)", word->data[0], word->data[0]);
+    } else if (type == 2) {
+        printf(", \nwords: [ ");
+        Word *item;
+        for (int i = 0;; ++i) {
+            item = (Word *) word->data[i];
+            if (item == lit) {
+                printf("LIT(%d) ", word->data[++i]);
+            } else if (item == int_dot_quote) {
+                printf(".\"(");
+                char *str = (char *) (word->data + i + 1);
+                int count = printf("%s", str) + 1;
+                i += byteToIntCeil(count);
+                printf(")");
+            } else if (item == branchQWord) {
+                printf("BRANCH(%d) ", word->data[++i]);
+            } else if (item == branchWord) {
+                printf("BRANCH?(%d) ", word->data[++i]);
+            } else {
+                printf("%s(%x) ", item->name->array, (unsigned int) (word->data + i));
+            }
+
+            if (item == int_exit || item == NULL) break;
+        }
+        printf("]");
+    }
+    printf(")");
+}
 
 // DEBUG (--) name
 void fun_debug() {
-//    fun_minus_find();
-//    if (popData()) {
-//        Word *word = (Word *) popData();
-//        printWord(word);
-//    }
+    fun_minus_find();
+    if (popData()) {
+        Word *word = (Word *) popData();
+        putchar('\n');
+        printWord(word);
+    }
 }
 
 /**************/
@@ -142,6 +151,8 @@ void fun_dump() {
     char *addr = (char *) popData();
     char *base, *end = addr + size, *aux;
     int i, j, lines = (size + 15) / 16;
+
+    putchar('\n');
 
     for (i = 0; i < lines; ++i) {
         base = addr + i * 16;
@@ -373,18 +384,14 @@ void fun_emit() {
 
 // TYPE (--)
 void fun_type() {
-    int size = popData(), i;
-    char *addr = (char *) popData();
-
-    for (i = 0; i < size; ++i) {
-        putchar(addr[i]);
-    }
+    String *str = (String *) popData();
+    printf("%s ", str->array);
 }
 
 // PRINT (--)
 void fun_print() {
-    String *str = (String *) popData();
-    printf("%s ", str->array);
+    char *str = (char *) popData();
+    printf("%s ", str);
 }
 
 static int printNumber(int num, int base) {
@@ -434,10 +441,10 @@ void fun_words() {
 }
 
 // FREE (-- n)
-void fun_free(){
+void fun_free() {
     int totalRam = motherboard_get_memory_size();
-    int ramWithoutStart = totalRam - ((int)dp);
-    int stackSize = 0xffff - ((int)&totalRam);
+    int ramWithoutStart = totalRam - ((int) dp);
+    int stackSize = 0xffff - ((int) &totalRam);
 
     int freeRam = ramWithoutStart - stackSize;
     pushData(freeRam);
@@ -447,7 +454,7 @@ void fun_free(){
 void fun_abort() {
     pushData('\"');
     fun_word();
-    printf("%s", ((String *) popData())->array);
+    printf("%s ", ((String *) popData())->array);
     fun_quit();
 }
 
@@ -788,9 +795,6 @@ void fun_run_list() {
     currentWordList = currentWord;
     for (instructionOffset = 0;; instructionOffset++) {
         next = (Word *) word->data[instructionOffset];
-//        printf("Executing word: \n");
-//        printWord(next);
-//        putchar('\n');
         pushData((int) next);
         fun_execute();
         if (next == int_exit) break;
@@ -816,34 +820,63 @@ void fun_lit() {
 void fun_q_branch() {
     int cond = popData();
     int jump = currentWordList->data[++instructionOffset];
-    if (cond) {
-        instructionOffset = jump;
+    if (!cond) {
+        instructionOffset += jump;
     }
 }
 
 // BRANCH (--)
 void fun_branch() {
-    int jump = currentWordList->data[instructionOffset + 1];
-    instructionOffset = jump;
+    int jump = currentWordList->data[++instructionOffset];
+    instructionOffset += jump;
 }
 
-
 // IF (n --)
-void fun_if(){
+void fun_if() {
+    *(int *) dp = (int) branchQWord;
+    dp += 4;// word addr
+    pushR((int) dp);
+    dp += 4; //jump addr
+}
 
+// ELSE (--)
+void fun_else() {
+    int *jump = (int *) popR();
+
+    *(int *) dp = (int) branchWord;
+    dp += 4;// word addr
+    pushR((int) dp);
+    dp += 4; //jump addr
+    int diff = ((int) dp) - ((int) jump);
+    *jump = (diff / 4) - 1;
+}
+
+// THEN (--)
+void fun_then() {
+    int *jump = (int *) popR();
+    int diff = ((int) dp) - ((int) jump);
+    *jump = (diff / 4) - 1;
 }
 
 /****************/
 /*** Compiler ***/
 /****************/
 
+// [ (--)
+void fun_open_bracket(){
+    *state->data = 0;
+}
+
+// ] (--)
+void fun_close_bracket(){
+    *state->data = 1;
+}
+
 // : (--)
 void fun_colon() {
     fun_create();
     Word *word = (Word *) popData();
     word->code = fun_run_list;
-    //fun_bracket();
-//    printf("Word name: '%s'\n", word->name->array);
     *state->data = 1;
 
     while (1) {
@@ -852,9 +885,6 @@ void fun_colon() {
 
         if (flag) {
             Word *toRun = (Word *) peekData();
-//            printf("%s Word: '%s', toRun: %d, semi_colon: %d\n", flag == 1 ? "Executing" : "Compiling",
-//                   toRun->name->array,
-//                   (int) toRun, (int) semi_colon);
             if (flag == 1) {
                 fun_execute();
                 if (toRun == semi_colon) {
@@ -875,7 +905,6 @@ void fun_colon() {
             fun_q_number(); // (StringAddr -- number flag)
             int numFlag = popData();
             if (numFlag) {
-//                printf("Compiling number: %d\n", peekData());
                 fun_literal();
             } else {
                 printf("Invalid symbol: '%s'\n", name->array);
@@ -887,10 +916,47 @@ void fun_colon() {
     *state->data = 0;
 }
 
+// POSTPONE (--)
+void fun_postpone(){
+    fun_minus_find();
+    int flag = popData();
+    if(flag){
+//        Word *toRun = (Word *) peekData();
+        if (flag == 1) {
+            fun_comma();
+        } else {
+            // TODO
+            /*
+             * https://www.forth.com/starting-forth/11-forth-compiler-defining-words/
+             *
+             * Be sure to note the "intelligence" built into POSTPONE. POSTPONE parses the next word in the input
+             * stream, decides if it is immediate or not, and proceeds accordingly. If the word was not immediate,
+             * POSTPONE compiles the address of the word into a compilee definition; think of it as deferred
+             * compilation. If the word is immediate, POSTPONE compiles the address of this word into the definition
+             * currently being defined; this is ordinary compilation, but of an immediate word which otherwise would
+             * have been executed.
+             *
+             * WTF?!!
+             * What I'm supposed to implement?
+             */
+        }
+    }
+}
+
+// IMMEDIATE (--)
+void fun_immediate(){
+    Word* last = dictionary;
+    while(last->next){
+        last = last->next;
+    }
+    last->flags |= IMMEDIATE_BIT_MASK;
+}
+
 /*********************/
 /***     Time      ***/
 /*********************/
 
+// TICKS (n --)
 void fun_ticks() {
     int ticks = popData();
     while (ticks > 0) {
@@ -900,6 +966,7 @@ void fun_ticks() {
     }
 }
 
+// TIMES (n --) word
 void fun_times_run() {
     int times = popData();
     fun_minus_find();
@@ -935,30 +1002,36 @@ static void robot_signal(int signal) {
     pushData(robot->failReason);
 }
 
+// MINE (--)
 void fun_mine() {
     robot_signal(ROBOT_SIGNAL_MINE_BLOCK);
 }
-
+// FRONT or FORWARD (--)
 void fun_front() {
     robot_signal(ROBOT_SIGNAL_MOVE_FORWARD);
 }
 
+// BACK (--)
 void fun_back() {
     robot_signal(ROBOT_SIGNAL_MOVE_BACK);
 }
 
+// LEFT (--)
 void fun_left() {
     robot_signal(ROBOT_SIGNAL_ROTATE_LEFT);
 }
 
+// RIGHT (--)
 void fun_right() {
     robot_signal(ROBOT_SIGNAL_ROTATE_RIGHT);
 }
 
+// UP (--)
 void fun_up() {
     robot_signal(ROBOT_SIGNAL_ROTATE_UP);
 }
 
+// DOWN (--)
 void fun_down() {
     robot_signal(ROBOT_SIGNAL_ROTATE_DOWN);
 }
@@ -1044,7 +1117,7 @@ void fun_minus_find() {
     fun_find();
 }
 
-// QUIT
+// QUIT (--)
 void fun_quit() {
     longjmp(onError, 1);
 }
@@ -1077,7 +1150,13 @@ void fun_execute() {
         return;
     }
     Word *w = (Word *) popData();
-    if (w == NULL || w->code == 0) {
+    if (w == NULL) {
+        return;
+    }
+    if (((int) w) % 4 != 0) {
+        printf("Word not aligned: %d\n", (int) w);
+    }
+    if (w->code == 0) {
         return;
     }
     currentWord = w;
@@ -1131,7 +1210,11 @@ void fun_expect() {
     }
     fgets(addr, size, stdin);
     putchar(' ');
-    *span->data = strlen(addr);
+    int len = strlen(addr);
+    *span->data = len;
+    if (len == 0) {
+        putchar('\n');
+    }
 }
 
 // QUERY (--)
@@ -1146,7 +1229,9 @@ void fun_query() {
 
 // FORTH (--)
 void fun_forth() {
-    setjmp(onError);
+    if(setjmp(onError)){
+        *state->data = 0;
+    }
     fun_query();
     fun_interpret();
 
@@ -1154,11 +1239,6 @@ void fun_forth() {
         printf("ok\n");
     }
 }
-
-//TODO
-/*
- * POSTPONE
- */
 
 void init() {
     fun_align_word();
@@ -1220,17 +1300,25 @@ void init() {
     extendDictionary(createWord("DUP", fun_dup));
     extendDictionary(createWord("DROP", fun_drop));
     extendDictionary(createWord("TIMES", fun_times_run));
+
     //flow
-    extendDictionary(createWord("BRANCH?", fun_q_branch));
-    extendDictionary(createWord("BRANCH", fun_branch));
+    branchQWord = extendDictionary(createWord("BRANCH?", fun_q_branch));
+    branchWord = extendDictionary(createWord("BRANCH", fun_branch));
+    extendDictionary(createImmediateWord("IF", fun_if));
+    extendDictionary(createImmediateWord("ELSE", fun_else));
+    extendDictionary(createImmediateWord("THEN", fun_then));
 
-
+    // compile
+    extendDictionary(createImmediateWord("]", fun_close_bracket));
+    extendDictionary(createImmediateWord("[", fun_open_bracket));
     extendDictionary(createWord(":", fun_colon));
-    semi_colon = extendDictionary(createInmediateWord(";", fun_semi_colon));
+    extendDictionary(createImmediateWord("POSTPONE", fun_postpone));
+    extendDictionary(createImmediateWord("IMMEDIATE", fun_immediate));
+    semi_colon = extendDictionary(createImmediateWord(";", fun_semi_colon));
     lit = extendDictionary(createWord("LIT", fun_lit));
     int_exit = extendDictionary(createWord("EXIT", fun_exit));
     extendDictionary(createWord("ABORT\"", fun_abort));
-    extendDictionary(createInmediateWord(".\"", fun_dot_quote));
+    extendDictionary(createImmediateWord(".\"", fun_dot_quote));
     int_dot_quote = extendDictionary(createWord("(.\")", fun_int_dot_quote));
 
     // IO
