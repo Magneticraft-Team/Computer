@@ -13,14 +13,14 @@ typedef struct fString {
 } String;
 
 typedef struct word {
-    String *name;
-    uint8_t flags;
+    String *name;           // heap allocated
+    uint8_t flags;          // immediate flag here instead on the name size
 
-    struct word *next;
+    struct word *next;      // next word in the dictionary
 
-    void (*code)(void);
+    void (*code)(void);     // function to execute for this word
 
-    int data[0];
+    int data[0];            // extra data
 } Word;
 
 typedef void (*Func)(void);

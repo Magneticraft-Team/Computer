@@ -12,7 +12,6 @@ Word *dictionary = NULL;
 
 char *dp = (char *) &__end + 340;
 
-
 String *createString(const char *str) {
     int size = strlen(str);
     String *header = allot(sizeof(String) + size);

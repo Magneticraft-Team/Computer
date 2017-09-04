@@ -514,9 +514,9 @@ inline int hasDisk() {
     return disk_drive_has_disk(motherboard_get_floppy_drive());
 }
 
-// BLOCK (n -- addr)
+// BLOCK (n -- addr) n >= 1
 void fun_block() {
-    int block = popData();
+    int block = popData() - 1;
 
     if (!hasDisk()) {
         printf("No disk\n");
@@ -525,9 +525,12 @@ void fun_block() {
     DiskDrive drive = getDisk();
 
     if (*fileWord->data == 0) {
-        printf("No file loaded\n");
-        pushData(0);
-        return;
+        File *root = file_get_root(drive);
+        File* newFile = file_open(drive, root, "forth.txt");
+        if(newFile == NULL){
+            newFile = file_create(drive, root, "forth.txt", FILE_TYPE_NORMAL);
+        }
+        *fileWord->data = (int) newFile;
     }
 
     if (currentBlock != 0 && currentBlock != block) {
@@ -1241,29 +1244,46 @@ void fun_forth() {
 }
 
 void init() {
+    // align dp to word boundaries
     fun_align_word();
 
+    // Interpreter
     extendDictionary(createWord("FORTH", fun_forth));
     extendDictionary(createWord("QUERY", fun_query));
     extendDictionary(createWord("INTERPRET", fun_interpret));
+    extendDictionary(createWord("EXPECT", fun_expect));
+    extendDictionary(createWord("?STACK", fun_q_stack));
+    extendDictionary(createWord("EXECUTE", fun_execute));
+    extendDictionary(createWord("NUMBER?", fun_q_number));
+    extendDictionary(createWord("QUIT", fun_quit));
+    extendDictionary(createWord("-FIND", fun_minus_find));
+    extendDictionary(createWord("FIND", fun_find));
+    extendDictionary(createWord("WORD", fun_word));
+    extendDictionary(createWord("(FIND)", fun_int_find));
+
+    // Constants
     extendDictionary(createConstant("TIB", (int) tib));
     extendDictionary(createConstant("BLOCK", (int) blockBuffer));
     extendDictionary(createConstant("CELL", 4));
     extendDictionary(createConstant("SPACE", ' '));
+    // Variables
     moreIn = extendDictionary(createVariable(">IN", 0));
     blk = extendDictionary(createVariable("BLK", 0));
     span = extendDictionary(createVariable("SPAN", 0));
     hashTib = extendDictionary(createVariable("#TIB", 0));
     bl = extendDictionary(createVariable("BL", ' '));
-    extendDictionary(createWord("WORD", fun_word));
-    extendDictionary(createWord("NUMBER?", fun_q_number));
-    extendDictionary(createWord("-FIND", fun_minus_find));
-    extendDictionary(createWord("(FIND)", fun_int_find));
     base = extendDictionary(createVariable("BASE", 10));
     state = extendDictionary(createVariable("STATE", 0));
-    extendDictionary(createWord("EXECUTE", fun_execute));
-    extendDictionary(createWord(".", fun_dot));
-    extendDictionary(createWord(".S", fun_dot_s));
+
+    // Math
+    extendDictionary(createWord("+", fun_plus));
+    extendDictionary(createWord("-", fun_minus));
+    extendDictionary(createWord("*", fun_times));
+    extendDictionary(createWord("/", fun_div));
+    extendDictionary(createWord("%", fun_mod));
+
+    // Memory
+    extendDictionary(createWord("CELLS", fun_cells));
     extendDictionary(createWord("@", fun_at));
     extendDictionary(createWord("!", fun_set));
     extendDictionary(createWord("C@", fun_c_at));
@@ -1274,56 +1294,46 @@ void init() {
     extendDictionary(createWord("CREATE", fun_create));
     extendDictionary(createWord("VARIABLE", fun_variable));
     extendDictionary(createWord("CONSTANT", fun_constant));
-    extendDictionary(createWord("WORDS", fun_words));
-    extendDictionary(createWord("TYPE", fun_type));
-    extendDictionary(createWord("DUMP", fun_dump));
-    extendDictionary(createWord("CELLS", fun_cells));
-    extendDictionary(createWord("+", fun_plus));
-    extendDictionary(createWord("-", fun_minus));
-    extendDictionary(createWord("*", fun_times));
-    extendDictionary(createWord("/", fun_div));
-    extendDictionary(createWord("%", fun_mod));
-    extendDictionary(createWord("PAGE", fun_page));
-    extendDictionary(createWord("PRINT", fun_print));
-    extendDictionary(createWord("EMIT", fun_emit));
-    extendDictionary(createWord("CR", fun_cr));
     extendDictionary(createWord("'", fun_quote));
     extendDictionary(createWord(">BODY", fun_more_body));
     extendDictionary(createWord(">DOES", fun_more_does));
     extendDictionary(createWord("FREE", fun_free));
-    extendDictionary(createWord("BLOCK", fun_block));
-    extendDictionary(createWord("KEY", fun_key));
+
+    // Time
+    extendDictionary(createWord("TIMES", fun_times_run));
     extendDictionary(createWord("TICKS", fun_ticks));
 
-    // stack
-    extendDictionary(createWord("SWAP", fun_swap));
-    extendDictionary(createWord("DUP", fun_dup));
-    extendDictionary(createWord("DROP", fun_drop));
-    extendDictionary(createWord("TIMES", fun_times_run));
-
-    //flow
-    branchQWord = extendDictionary(createWord("BRANCH?", fun_q_branch));
-    branchWord = extendDictionary(createWord("BRANCH", fun_branch));
-    extendDictionary(createImmediateWord("IF", fun_if));
-    extendDictionary(createImmediateWord("ELSE", fun_else));
-    extendDictionary(createImmediateWord("THEN", fun_then));
-
-    // compile
+    // Compiler
     extendDictionary(createImmediateWord("]", fun_close_bracket));
     extendDictionary(createImmediateWord("[", fun_open_bracket));
     extendDictionary(createWord(":", fun_colon));
     extendDictionary(createImmediateWord("POSTPONE", fun_postpone));
     extendDictionary(createImmediateWord("IMMEDIATE", fun_immediate));
     semi_colon = extendDictionary(createImmediateWord(";", fun_semi_colon));
-    lit = extendDictionary(createWord("LIT", fun_lit));
+
+    // Compiler internal
     int_exit = extendDictionary(createWord("EXIT", fun_exit));
+    lit = extendDictionary(createWord("LIT", fun_lit));
     extendDictionary(createWord("ABORT\"", fun_abort));
     extendDictionary(createImmediateWord(".\"", fun_dot_quote));
     int_dot_quote = extendDictionary(createWord("(.\")", fun_int_dot_quote));
 
-    // IO
+    // Flow
+    branchQWord = extendDictionary(createWord("BRANCH?", fun_q_branch));
+    branchWord = extendDictionary(createWord("BRANCH", fun_branch));
+    extendDictionary(createImmediateWord("IF", fun_if));
+    extendDictionary(createImmediateWord("ELSE", fun_else));
+    extendDictionary(createImmediateWord("THEN", fun_then));
+
+    // Stack
+    extendDictionary(createWord("SWAP", fun_swap));
+    extendDictionary(createWord("DUP", fun_dup));
+    extendDictionary(createWord("DROP", fun_drop));
+
+    // Disk IO
     fileWord = extendDictionary(createVariable("FILE", 0));
     folderWord = extendDictionary(createVariable("FOLDER", 0));
+    extendDictionary(createWord("BLOCK", fun_block));
     extendDictionary(createWord("LIST", fun_list));
     extendDictionary(createWord("LOAD", fun_load));
     extendDictionary(createWord("WIPE", fun_wipe));
@@ -1335,7 +1345,20 @@ void init() {
     extendDictionary(createWord("MKFILE", fun_mkfile));
     extendDictionary(createWord("CD", fun_cd));
     extendDictionary(createWord("DELETE", fun_delete));
-    //robot
+
+    // Terminal IO
+    extendDictionary(createWord(".", fun_dot));
+    extendDictionary(createWord(".S", fun_dot_s));
+    extendDictionary(createWord("WORDS", fun_words));
+    extendDictionary(createWord("TYPE", fun_type));
+    extendDictionary(createWord("DUMP", fun_dump));
+    extendDictionary(createWord("KEY", fun_key));
+    extendDictionary(createWord("PAGE", fun_page));
+    extendDictionary(createWord("PRINT", fun_print));
+    extendDictionary(createWord("EMIT", fun_emit));
+    extendDictionary(createWord("CR", fun_cr));
+
+    // Robot
     extendDictionary(createWord("MINE", fun_mine));
     extendDictionary(createWord("FRONT", fun_front));
     extendDictionary(createWord("FORWARD", fun_front));
@@ -1344,9 +1367,11 @@ void init() {
     extendDictionary(createWord("RIGHT", fun_right));
     extendDictionary(createWord("UP", fun_up));
     extendDictionary(createWord("DOWN", fun_down));
-    //debug
+
+    // Debug
     extendDictionary(createWord("DEBUG", fun_debug));
 
+    // bytes free
     fun_free();
     printf("%d bytes free\n", popData());
 }
