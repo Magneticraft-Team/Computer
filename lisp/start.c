@@ -1,16 +1,7 @@
 /* Original implementation: https://github.com/kristianlm/small-lisp */
 
-#include "dependencies.h"
-#include "object.h"
-#include "globals.h"
-#include "constructors.h"
-#include "environment.h"
-#include "print.h"
-#include "tokenizer.h"
-#include "eval.h"
-#include "primitives.h"
+#include "lisp.h"
 
-Object *prim_network(Object *args IGNORED);
 
 /*** Initialization ***/
 void init() {
@@ -79,15 +70,21 @@ void init() {
     extend_top(getOrCreateSymbol("free"), createPrimop(prim_free));
     extend_top(getOrCreateSymbol("gc"), createPrimop(prim_gc));
 
+    // fs
+
+
     //extra
     extend_top(getOrCreateSymbol("debug"), createPrimop(prim_debug));
     extend_top(getOrCreateSymbol("clear"), createPrimop(prim_clear));
     extend_top(getOrCreateSymbol("net"), createPrimop(prim_network));
 }
 
+// needed to start execution at main
+#include "../driver/api/boot.h"
+
 /*** Main Driver ***/
-int __start() {
-    clear_screen();
+void main(){
+//    clear_screen();
     init();
     printf("Lips Interpreter 1.0\n");
 
@@ -110,58 +107,8 @@ int __start() {
         if (output == NULL) break;
     }
     printf("Exit");
-    return 0;
 }
 
-Network net = NULL;
-
-Network getNet() {
-    int i, count;
-    if (!net) {
-        for (i = 0, count = motherboard_get_max_devices(); i < count; i++) {
-            if (motherboard_get_devices()[i]->type == DEVICE_TYPE_NETWORK_CARD) {
-                net = (Network) motherboard_get_devices()[i];
-                break;
-            }
-        }
-        if (!net) {
-            printf("Error: Unable to locate network card\n");
-            exit(-1);
-        }
-    }
-    return net;
-}
-
-Object *prim_network(Object *args IGNORED) {
-    Network net = getNet();
-    //https://raw.githubusercontent.com/Magneticraft-Team/Magneticraft/1.12/src/main/resources/assets/magneticraft/blockstates/battery.json
-    network_set_target_ip(net, "raw.githubusercontent.com");
-    network_set_target_port(net, 443);
-    network_signal(net, 3);
-    network_set_input_pointer(net, 0);
-    network_set_output_pointer(net, 0);
-
-    const char *get = "GET /Magneticraft-Team/Magneticraft/1.12/src/main/resources/assets/magneticraft/blockstates/battery.json HTTP/1.1\r\n"
-            "Host: raw.githubusercontent.com\r\n"
-            "Connection: close\r\n"
-            "\r\n";
-
-    i8 *ptr = network_get_output_buffer(net);
-    strcpy(ptr, get);
-    network_set_output_pointer(net, strlen(get));
-
-    while (network_get_output_pointer(net) && network_is_connection_open(net)) {
-        motherboard_sleep(1);
-    }
-
-    while (!network_get_input_pointer(net) && network_is_connection_open(net)) {
-        motherboard_sleep(1);
-    }
-    printf("%s (%d)\n", network_get_input_buffer(net), network_get_input_pointer(net));
-
-    network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
-    return nil;
-}
 
 /*
 (defun map (fun list)

@@ -2,9 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "getters.h"
-#include "dependencies.h"
-#include "globals.h"
+#include "lisp.h"
 
 /*** Getters ***/
 

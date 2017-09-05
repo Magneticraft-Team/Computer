@@ -2,10 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "read.h"
-#include "dependencies.h"
-#include "globals.h"
-
+#include "lisp.h"
 
 #define INPUT_BUFFER_SIZE 80
 char inputBuffer[INPUT_BUFFER_SIZE];

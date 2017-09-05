@@ -6,7 +6,10 @@
 #include "api/stdio.h"
 #include "fs/filesystem.h"
 
-int __start() {
+// needed to start execution at main
+#include "../driver/api/boot.h"
+
+void main() {
     char input[80];
     DiskDrive drive = motherboard_get_floppy_drive();
     clear_screen();
@@ -22,7 +25,4 @@ int __start() {
     File* file =  file_create(drive, root, "test", FILE_TYPE_NORMAL);
     printf("File created: '%s'\n", file->name);
 
-
-
-    return 0;
 }

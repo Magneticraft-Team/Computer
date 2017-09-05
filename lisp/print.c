@@ -2,10 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "print.h"
-#include "dependencies.h"
-#include "getters.h"
-#include "globals.h"
+#include "lisp.h"
 
 void printObjFormatted(Object *op) {
     if (op == NULL) {

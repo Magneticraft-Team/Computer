@@ -7,8 +7,11 @@
 
 int exitCode = 0;
 
+// needed to start execution at main
+#include "../driver/api/boot.h"
+
 /*** Main Driver ***/
-int __start()  {
+void main()  {
 
     clear_screen();
     printf("FORTH 1.0\n");
@@ -17,6 +20,4 @@ int __start()  {
     while (!exitCode){
         fun_forth();
     }
-
-    return exitCode;
 }

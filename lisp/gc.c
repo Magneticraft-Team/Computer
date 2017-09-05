@@ -2,12 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "gc.h"
-#include "dependencies.h"
-#include "globals.h"
-#include "getters.h"
-#include "tokenizer.h"
-
+#include "lisp.h"
 
 /*** Garbage Collector ***/
 

@@ -6,6 +6,7 @@ SECTIONS
 {
     . = 0x0000;
     .text : {
+        *(.text.main)
         *(.text)
         PROVIDE (_etext_end = .);
     }

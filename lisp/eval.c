@@ -2,13 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "eval.h"
-#include "getters.h"
-#include "constructors.h"
-#include "globals.h"
-#include "environment.h"
-#include "print.h"
-
+#include "lisp.h"
 
 Object *eval(Object *exp, Object *env) {
     Object *tmp, *proc, *vals, *ifExp;

@@ -2,13 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "primitives.h"
-#include "constructors.h"
-#include "getters.h"
-#include "globals.h"
-#include "print.h"
-#include "gc.h"
-
+#include "lisp.h"
 
 /*** Primitives ***/
 
@@ -221,4 +215,54 @@ Object *prim_xor(Object *args) {
     Object *a = getFirst(args);
     Object *b = getFirst(getRest(args));
     return createInt(getInt(a) ^ getInt(b));
+}
+
+Network net = NULL;
+
+Network getNet() {
+    int i, count;
+    if (!net) {
+        for (i = 0, count = motherboard_get_max_devices(); i < count; i++) {
+            if (motherboard_get_devices()[i]->type == DEVICE_TYPE_NETWORK_CARD) {
+                net = (Network) motherboard_get_devices()[i];
+                break;
+            }
+        }
+        if (!net) {
+            printf("Error: Unable to locate network card\n");
+            exit(-1);
+        }
+    }
+    return net;
+}
+
+Object *prim_network(Object *args IGNORED) {
+    Network net = getNet();
+    //https://raw.githubusercontent.com/Magneticraft-Team/Magneticraft/1.12/src/main/resources/assets/magneticraft/blockstates/battery.json
+    network_set_target_ip(net, "raw.githubusercontent.com");
+    network_set_target_port(net, 443);
+    network_signal(net, 3);
+    network_set_input_pointer(net, 0);
+    network_set_output_pointer(net, 0);
+
+    const char *get = "GET /Magneticraft-Team/Magneticraft/1.12/src/main/resources/assets/magneticraft/blockstates/battery.json HTTP/1.1\r\n"
+            "Host: raw.githubusercontent.com\r\n"
+            "Connection: close\r\n"
+            "\r\n";
+
+    i8 *ptr = network_get_output_buffer(net);
+    strcpy(ptr, get);
+    network_set_output_pointer(net, strlen(get));
+
+    while (network_get_output_pointer(net) && network_is_connection_open(net)) {
+        motherboard_sleep(1);
+    }
+
+    while (!network_get_input_pointer(net) && network_is_connection_open(net)) {
+        motherboard_sleep(1);
+    }
+    printf("%s (%d)\n", network_get_input_buffer(net), network_get_input_pointer(net));
+
+    network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
+    return nil;
 }

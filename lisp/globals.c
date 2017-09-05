@@ -2,7 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "globals.h"
+#include "lisp.h"
 
 const char *objTypeNames[] = {"int", "symbol", "cons/list", "function", "native function"};
 

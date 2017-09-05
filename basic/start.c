@@ -4,6 +4,9 @@
 
 #include "../driver/api/motherboard.h"
 
+// needed to start execution at main
+#include "../driver/api/boot.h"
+
 void main(){
     volatile struct motherboard_header *m = (struct motherboard_header *) 0xFFFF0000;
 

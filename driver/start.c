@@ -15,7 +15,10 @@ void print_info();
 
 void clear_monitor(Monitor mon);
 
-void __start() {
+// needed to start execution at main
+#include "api/boot.h"
+
+void main() {
 
 #ifdef USE_DEBUG_LOG
     motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);

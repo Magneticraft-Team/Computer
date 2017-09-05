@@ -2,9 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "dependencies.h"
-#include "constructors.h"
-#include "globals.h"
+#include "lisp.h"
 
 Object *newObject(enum ObjectType type, int count, ...) {
     Object *ret;

@@ -2,10 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "environment.h"
-#include "globals.h"
-#include "getters.h"
-#include "constructors.h"
+#include "lisp.h"
 
 /*** Environment ***/
 
