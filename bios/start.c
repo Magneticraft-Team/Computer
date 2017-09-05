@@ -48,7 +48,7 @@ int readDisk(DiskDrive drive) {
     int i;
     int sectors = disk_drive_get_num_sectors(drive);
 
-    if(sectors > 32) sectors = 32;
+    if(sectors > 36) sectors = 36;
     int wasEmpty = 0;
 
     for (i = 0; i < sectors; ++i) {

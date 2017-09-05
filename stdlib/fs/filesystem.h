@@ -1,11 +1,11 @@
 //
-// Created by cout970 on 2017-08-23.
+// Created by cout970 on 2017-09-05.
 //
 
 #ifndef MAGNETICRAFTCOMPUTER_FILESYSTEM_H
 #define MAGNETICRAFTCOMPUTER_FILESYSTEM_H
 
-#include "dependencies.h"
+#include "../dependencies.h"
 
 #define FILE_SYSTEM_MAGIC_NUMBER 0x1234CAFE
 #define NULL_SECTOR 0
@@ -18,7 +18,6 @@
 #define FILE_NORMAL_BLOCK_SPACE 1016
 
 #define MAX_OPEN_FILES 16
-
 
 typedef struct {
     int magicNumber;
@@ -55,25 +54,45 @@ typedef struct {
     char name[FILE_MAX_NAME_SIZE];
 } DirectoryEntry;
 
-void makeFileSystem(DiskDrive drive);
+struct ByteArray {
+    int length;
+    void *data;
+};
 
+struct ByteArray byteArrayOf(void *ptr, int len);
+
+// write FileSystem metadata to disk
+void makeFs(DiskDrive drive);
+
+// change file size
+void file_truncate(DiskDrive drive, File *file, int size);
+
+// read/write
+
+int file_read(DiskDrive drive, File *file, struct ByteArray dst, int offset);
+
+int file_write(DiskDrive drive, File *file, struct ByteArray src, int offset);
+
+int file_append(DiskDrive drive, File *file, struct ByteArray src);
+
+// get root folder '/'
 File *file_get_root(DiskDrive drive);
 
-File *file_create(DiskDrive drive, File *parent, const char *name, int type);
-
-void file_delete(DiskDrive drive, File *parent, File *file);
-
-void file_truncate(DiskDrive drive, File *file, int size) ;
+// open/close
 
 File *file_open(DiskDrive drive, File *parent, const char *name);
 
 void file_close(DiskDrive drive, File *file);
 
-int file_read(DiskDrive drive, File *file, void *buff, int offset, int size);
+int file_open_count();
 
-int file_write(DiskDrive drive, File *file, void *buff, int offset, int size);
+// creation/deletion
 
-int file_append(DiskDrive drive, File *file, void *buff, int size);
+File *file_create(DiskDrive drive, File *parent, const char *name, int type);
+
+void file_delete(DiskDrive drive, File *parent, File *file);
+
+
 
 
 #endif //MAGNETICRAFTCOMPUTER_FILESYSTEM_H

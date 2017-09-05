@@ -55,6 +55,12 @@ Word *folderWord;
 Word *branchQWord;
 // BRANCH
 Word *branchWord;
+// (DO)
+Word *doIntWord;
+// (LOOP)
+Word *loopIntWord;
+// (+LOOP)
+Word *plusLoopIntWord;
 
 Word *currentWord = NULL;
 Word *currentWordList = NULL;
@@ -120,6 +126,10 @@ void printWord(Word *word) {
                 printf("BRANCH(%d) ", word->data[++i]);
             } else if (item == branchWord) {
                 printf("BRANCH?(%d) ", word->data[++i]);
+            } else if (item == loopIntWord) {
+                printf("(LOOP)(%d) ", word->data[++i]);
+            } else if (item == plusLoopIntWord) {
+                printf("(+LOOP)(%d) ", word->data[++i]);
             } else {
                 printf("%s(%x) ", item->name->array, (unsigned int) (word->data + i));
             }
@@ -275,6 +285,13 @@ void fun_mod() {
     int b = popData();
     int a = popData();
     pushData(a % b);
+}
+
+// = (a b -- c)
+void fun_equals() {
+    int b = popData();
+    int a = popData();
+    pushData(a == b);
 }
 
 /*************************/
@@ -500,8 +517,7 @@ void fun_int_dot_quote() {
 inline DiskDrive getDisk() {
     DiskDrive drive = motherboard_get_floppy_drive();
     if (folderWord->data[0] == 0) {
-        makeFileSystem(drive);
-        folderWord->data[0] = (int) file_get_root(drive);
+        *folderWord->data = (int) file_get_root(drive);
     }
     return drive;
 }
@@ -516,7 +532,7 @@ inline int hasDisk() {
 
 // BLOCK (n -- addr) n >= 1
 void fun_block() {
-    int block = popData() - 1;
+    int block = popData();
 
     if (!hasDisk()) {
         printf("No disk\n");
@@ -526,19 +542,24 @@ void fun_block() {
 
     if (*fileWord->data == 0) {
         File *root = file_get_root(drive);
-        File* newFile = file_open(drive, root, "forth.txt");
-        if(newFile == NULL){
+        File *newFile = file_open(drive, root, "forth.txt");
+        if (newFile == NULL) {
             newFile = file_create(drive, root, "forth.txt", FILE_TYPE_NORMAL);
+            printf("Creating: forth.txt at '%s', addr: %d\n", root->name, (int) newFile);
+        } else {
+            printf("Opening file: forth.txt\n");
         }
         *fileWord->data = (int) newFile;
     }
 
     if (currentBlock != 0 && currentBlock != block) {
-        file_write(drive, (File *) *fileWord->data, blockBuffer, currentBlock * 1024, 1024);
+        int written = file_write(drive, (File *) *fileWord->data, byteArrayOf(blockBuffer, 1024), (currentBlock - 1) * 1024);
+//        printf("Saving old block: %d (%d), written: %d\n", currentBlock, (currentBlock - 1) * 1024, written);
     }
 
     currentBlock = block;
-    int read = file_read(drive, (File *) *fileWord->data, blockBuffer, currentBlock * 1024, 1024);
+    int read = file_read(drive, (File *) *fileWord->data, byteArrayOf(blockBuffer, 1024), (currentBlock - 1) * 1024);
+//    printf("Loading block: %d (%d), read: %d\n", block, (currentBlock - 1) * 1024, read);
 
     // fill remaining bytes with 0
     if (read < 1024) {
@@ -563,7 +584,7 @@ void fun_flush() {
         return;
     }
 
-    int writen = file_write(drive, (File *) *fileWord->data, blockBuffer, currentBlock * 1024, 1024);
+    int writen = file_write(drive, (File *) *fileWord->data, byteArrayOf(blockBuffer, 1024), (currentBlock - 1) * 1024);
     printf("Writen %d bytes\n", writen);
 }
 
@@ -639,6 +660,7 @@ void fun_pp() {
     int alreadyRead = *moreIn->data + 1;
     int size = totalSize - alreadyRead;
     if (size > 0) {
+        memset(blockBuffer + line * 64, ' ', 64);
         memcpy(blockBuffer + line * 64, tib + alreadyRead, (size_t) size);
         *moreIn->data += size + 1;
     }
@@ -736,10 +758,11 @@ void fun_ls() {
     DiskDrive drive = getDisk();
     File *folder = getCurrentFolder();
     int entryCount = folder->size / sizeof(DirectoryEntry);
+    putchar('\n');
     DirectoryEntry entry;
     for (int i = 0; i < entryCount; ++i) {
-        file_read(drive, folder, &entry, sizeof(DirectoryEntry) * i, sizeof(DirectoryEntry));
-        printf("%s\n", entry.name);
+        file_read(drive, folder, byteArrayOf(&entry, sizeof(DirectoryEntry)), sizeof(DirectoryEntry) * i);
+        printf("%d - %s\n", i, entry.name);
     }
 }
 
@@ -861,17 +884,143 @@ void fun_then() {
     *jump = (diff / 4) - 1;
 }
 
+// DO (limit, index --)
+void fun_do() {
+    *(int *) dp = (int) doIntWord;
+    dp += 4;// word addr
+    pushR((int) dp);
+}
+
+// (DO) (limit, index --)
+void fun_int_do() {
+    int index = popData();
+    int limit = popData();
+
+    pushR(limit);
+    pushR(index);
+}
+
+// LOOP (--)
+void fun_loop() {
+    int *jumpAddr = (int *) popR();
+
+    int diff = ((int) dp) - ((int) jumpAddr);
+    int jump = -(diff / 4) - 2;
+
+    *(int *) dp = (int) loopIntWord;
+    dp += 4;// word addr
+    *(int *) dp = jump;
+    dp += 4;// jump addr
+}
+
+// (LOOP) (--)
+void fun_int_loop() {
+    int index = popR();
+    int limit = popR();
+    int jump = currentWordList->data[++instructionOffset];
+
+    if (index < limit - 1) {
+        pushR(limit);
+        pushR(index + 1);
+        instructionOffset += jump;
+    }
+}
+
+// +LOOP (--)
+void fun_plus_loop() {
+    int *jumpAddr = (int *) popR();
+
+    int diff = ((int) dp) - ((int) jumpAddr);
+    int jump = -(diff / 4) - 2;
+
+    *(int *) dp = (int) plusLoopIntWord;
+    dp += 4;// word addr
+    *(int *) dp = jump;
+    dp += 4;// jump addr
+}
+
+// (+LOOP) (n --)
+void fun_int_plus_loop() {
+    int inc = popData();
+    int index = popR();
+    int limit = popR();
+    int jump = currentWordList->data[++instructionOffset];
+
+    if (index < limit - 1) {
+        pushR(limit);
+        pushR(index + inc);
+        instructionOffset += jump;
+    }
+}
+
+// I (-- n)
+void fun_i() {
+    int index = peekR();
+    pushData(index);
+}
+
+// J (-- n)
+void fun_j() {
+    int index = popR();
+    int limit = popR();
+    int superIndex = peekR();
+    pushR(limit);
+    pushR(index);
+    pushData(superIndex);
+}
+
+// BEGIN (--)
+void fun_begin() {
+    pushR((int) dp);
+}
+
+// UNTIL (n --)
+void fun_until() {
+    int *jumpAddr = (int *) popR();
+    int diff = ((int) dp) - ((int) jumpAddr);
+    int jump = -(diff / 4) - 2;
+
+    *(int *) dp = (int) branchQWord;
+    dp += 4;// word addr
+    *(int *) dp = jump;
+    dp += 4; //jump addr
+}
+
+// AGAIN (--)
+void fun_again() {
+    int *jumpAddr = (int *) popR();
+    int diff = ((int) dp) - ((int) jumpAddr);
+    int jump = -(diff / 4) - 2;
+
+    *(int *) dp = (int) branchWord;
+    dp += 4;// word addr
+    *(int *) dp = jump;
+    dp += 4; //jump addr
+}
+
+//// LEAVE (--)
+//void fun_leave(){
+////    int *jumpAddr = (int *) popR();
+////    int diff = ((int) dp) - ((int) jumpAddr);
+////    int jump = -(diff / 4) - 2;
+////
+////    *(int *) dp = (int) branchWord;
+////    dp += 4;// word addr
+////    *(int *) dp = (int) jump;
+////    dp += 4; //jump addr
+//}
+
 /****************/
 /*** Compiler ***/
 /****************/
 
 // [ (--)
-void fun_open_bracket(){
+void fun_open_bracket() {
     *state->data = 0;
 }
 
 // ] (--)
-void fun_close_bracket(){
+void fun_close_bracket() {
     *state->data = 1;
 }
 
@@ -910,8 +1059,17 @@ void fun_colon() {
             if (numFlag) {
                 fun_literal();
             } else {
-                printf("Invalid symbol: '%s'\n", name->array);
-                fun_quit();
+                if (popData() == -1) {
+                    printf("Invalid symbol: '%s'\n", name->array);
+                    emptyDataStack();
+                    emptyRStack();
+                    fun_quit();
+                } else {
+                    if (*span->data != 0) {
+                        printf("ok\n");
+                    }
+                    break;
+                }
             }
         }
         fun_q_stack();
@@ -920,10 +1078,10 @@ void fun_colon() {
 }
 
 // POSTPONE (--)
-void fun_postpone(){
+void fun_postpone() {
     fun_minus_find();
     int flag = popData();
-    if(flag){
+    if (flag) {
 //        Word *toRun = (Word *) peekData();
         if (flag == 1) {
             fun_comma();
@@ -947,9 +1105,9 @@ void fun_postpone(){
 }
 
 // IMMEDIATE (--)
-void fun_immediate(){
-    Word* last = dictionary;
-    while(last->next){
+void fun_immediate() {
+    Word *last = dictionary;
+    while (last->next) {
         last = last->next;
     }
     last->flags |= IMMEDIATE_BIT_MASK;
@@ -1009,6 +1167,7 @@ static void robot_signal(int signal) {
 void fun_mine() {
     robot_signal(ROBOT_SIGNAL_MINE_BLOCK);
 }
+
 // FRONT or FORWARD (--)
 void fun_front() {
     robot_signal(ROBOT_SIGNAL_MOVE_FORWARD);
@@ -1171,6 +1330,7 @@ void fun_q_stack() {
     if (dataStackPtr < 0 || dataStackPtr > STACK_SIZE) {
         printf("Error: invalid stack ptr %d\n", dataStackPtr);
         emptyDataStack();
+        emptyRStack();
         fun_quit();
     }
 }
@@ -1192,8 +1352,13 @@ void fun_interpret() {
             if (!flag) {
                 if (popData() == -1) {
                     printf("Invalid symbol: '%s'\n", name->array);
+                    emptyDataStack();
+                    emptyRStack();
                     fun_quit();
                 } else {
+                    if (*span->data != 0) {
+                        printf("ok\n");
+                    }
                     break;
                 }
             }
@@ -1232,15 +1397,12 @@ void fun_query() {
 
 // FORTH (--)
 void fun_forth() {
-    if(setjmp(onError)){
+
+    if (setjmp(onError)) {
         *state->data = 0;
     }
     fun_query();
     fun_interpret();
-
-    if (*span->data != 0) {
-        printf("ok\n");
-    }
 }
 
 void init() {
@@ -1266,6 +1428,7 @@ void init() {
     extendDictionary(createConstant("BLOCK", (int) blockBuffer));
     extendDictionary(createConstant("CELL", 4));
     extendDictionary(createConstant("SPACE", ' '));
+
     // Variables
     moreIn = extendDictionary(createVariable(">IN", 0));
     blk = extendDictionary(createVariable("BLK", 0));
@@ -1281,6 +1444,7 @@ void init() {
     extendDictionary(createWord("*", fun_times));
     extendDictionary(createWord("/", fun_div));
     extendDictionary(createWord("%", fun_mod));
+    extendDictionary(createWord("=", fun_equals));
 
     // Memory
     extendDictionary(createWord("CELLS", fun_cells));
@@ -1324,6 +1488,18 @@ void init() {
     extendDictionary(createImmediateWord("IF", fun_if));
     extendDictionary(createImmediateWord("ELSE", fun_else));
     extendDictionary(createImmediateWord("THEN", fun_then));
+    doIntWord = extendDictionary(createWord("(DO)", fun_int_do));
+    extendDictionary(createImmediateWord("DO", fun_do));
+    loopIntWord = extendDictionary(createWord("(LOOP)", fun_int_loop));
+    extendDictionary(createImmediateWord("LOOP", fun_loop));
+    plusLoopIntWord = extendDictionary(createWord("(+LOOP)", fun_int_plus_loop));
+    extendDictionary(createImmediateWord("+LOOP", fun_plus_loop));
+    extendDictionary(createWord("I", fun_i));
+    extendDictionary(createWord("J", fun_j));
+    extendDictionary(createImmediateWord("BEGIN", fun_begin));
+    extendDictionary(createImmediateWord("UNTIL", fun_until));
+    extendDictionary(createImmediateWord("AGAIN", fun_again));
+//    extendDictionary(createImmediateWord("LEAVE", fun_leave));
 
     // Stack
     extendDictionary(createWord("SWAP", fun_swap));

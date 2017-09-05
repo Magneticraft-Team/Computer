@@ -17,9 +17,8 @@
 #include "../stdlib/api/string.h"
 #include "../stdlib/api/ctype.h"
 #include "../stdlib/api/setjmp.h"
-#include "../stdlib/filesystem.h"
 #include "../stdlib/api/math.h"
-#include "../stdlib/filesystem.h"
+#include "../stdlib/fs/filesystem.h"
 
 #define IGNORED __attribute__((unused))
 

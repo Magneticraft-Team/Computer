@@ -26,17 +26,17 @@ struct mining_robot {
 #define ROBOT_SIGNAL_ROTATE_DOWN 6
 #define ROBOT_SIGNAL_MINE_BLOCK 7
 
-#define ROBOT_REQUEST_MOVE_FORWARD 1
-#define ROBOT_REQUEST_MOVE_BACK 2
-#define ROBOT_REQUEST_ROTATE_LEFT 3
-#define ROBOT_REQUEST_ROTATE_RIGHT 4
-#define ROBOT_REQUEST_ROTATE_UP 5
-#define ROBOT_REQUEST_ROTATE_DOWN 6
-#define ROBOT_REQUEST_MINE_BLOCK 7
-
 #define ROBOT_REQUEST_STATUS_PENDING 0
 #define ROBOT_REQUEST_STATUS_RUNNING 1
 #define ROBOT_REQUEST_STATUS_FAILED 2
 #define ROBOT_REQUEST_STATUS_SUCCESSFUL 3
+
+#define ROBOT_NO_FAIL = 0
+#define ROBOT_FAIL_NO_ENERGY = 1
+#define ROBOT_FAIL_BLOCKED = 2          // cannot move
+#define ROBOT_FAIL_UNBREAKABLE = 3      // cannot mine
+#define ROBOT_FAIL_LIMIT_REACHED = 4    // unable to rotate up/down
+#define ROBOT_FAIL_INVENTORY_FULL = 5   // unable to store mined block in inventory
+#define ROBOT_FAIL_AIR = 6              // try to mine air
 
 #endif //MAGNETICRAFTCOMPUTER_ROBOT_H

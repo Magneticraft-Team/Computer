@@ -4,7 +4,7 @@
 
 #include "dependencies.h"
 #include "api/stdio.h"
-#include "filesystem.h"
+#include "fs/filesystem.h"
 
 int __start() {
     char input[80];
@@ -14,7 +14,7 @@ int __start() {
 
     fgets(input, 80, stdin);
     printf("Loading disk\n");
-    makeFileSystem(drive);
+    makeFs(drive);
     printf("Filesystem loaded\n");
 
     File* root = file_get_root(drive);
