@@ -117,6 +117,14 @@ Object *getElem(Object *list, int index);
 
 void initReader();
 
+int canReadMore();
+
+void setInputFile(File *file);
+
+void setLineNumber(int val);
+
+int getLineNumber();
+
 void readLineBuffered();
 
 char getNextChar();
@@ -217,6 +225,20 @@ Object *prim_and(Object *args);
 Object *prim_or(Object *args);
 
 Object *prim_xor(Object *args);
+
+Object *prim_ls(Object *args IGNORED);
+
+Object *prim_cd(Object *args);
+
+Object *prim_mkdir(Object *args);
+
+Object *prim_mkfile(Object *args);
+
+Object *prim_delete(Object *args);
+
+Object *prim_cat(Object *args);
+
+Object *prim_load(Object *args);
 
 Object *prim_network(Object *args IGNORED);
 

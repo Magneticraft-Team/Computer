@@ -71,7 +71,21 @@ void init() {
     extend_top(getOrCreateSymbol("gc"), createPrimop(prim_gc));
 
     // fs
+    extend_top(getOrCreateSymbol("ls"), createPrimop(prim_ls));
+    extend_top(getOrCreateSymbol("cd"), createPrimop(prim_cd));
+    extend_top(getOrCreateSymbol("mkdir"), createPrimop(prim_mkdir));
+    extend_top(getOrCreateSymbol("mkfile"), createPrimop(prim_mkfile));
+    extend_top(getOrCreateSymbol("delete"), createPrimop(prim_delete));
+    extend_top(getOrCreateSymbol("cat"), createPrimop(prim_cat));
+    extend_top(getOrCreateSymbol("load"), createPrimop(prim_load));
 
+//    BLOCK
+//            FLUSH
+//    LIST
+//            LOAD
+//    WIPE
+//            PP
+//    OPEN
 
     //extra
     extend_top(getOrCreateSymbol("debug"), createPrimop(prim_debug));
@@ -90,7 +104,7 @@ void main(){
 
     initTokenizer();
     Object *input, *output = nil;
-    for (;;) {
+    while (canReadMore()) {
         //read input
         input = readObj();
 

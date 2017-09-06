@@ -98,7 +98,7 @@ Object *prim_free(Object *args) {
     free((void *) used);
     register int *sp asm ("sp");
 
-    int free = motherboard_get_memory_size() - used - (0xFFFF - (int)sp);
+    int free = motherboard_get_memory_size() - used - (0xFFFF - (int) sp);
     printf("%d bytes used, %d bytes free, malloc ptr: %d, string count: %d, sp: %d\n",
            total_malloc, free, used, string_count, (int) sp);
     return nil;
@@ -265,4 +265,244 @@ Object *prim_network(Object *args IGNORED) {
 
     network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
     return nil;
+}
+
+// IO
+
+static File *currentFolder = NULL;
+
+inline DiskDrive getDisk() {
+    DiskDrive drive = motherboard_get_floppy_drive();
+    if (currentFolder == NULL) {
+        currentFolder = (int) file_get_root(drive);
+    }
+    return drive;
+}
+
+inline File *getCurrentFolder() {
+    return currentFolder;
+}
+
+inline int hasDisk() {
+    return disk_drive_has_disk(motherboard_get_floppy_drive());
+}
+
+Object *prim_ls(Object *args IGNORED) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+    File *folder = getCurrentFolder();
+    int entryCount = folder->size / sizeof(DirectoryEntry);
+    putchar('\n');
+    DirectoryEntry entry;
+    for (int i = 0; i < entryCount; ++i) {
+        file_read(drive, folder, byteArrayOf(&entry, sizeof(DirectoryEntry)), sizeof(DirectoryEntry) * i);
+        printf("%d - %s\n", i, entry.name);
+    }
+    return nil;
+}
+
+Object *prim_cd(Object *args) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("");
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    File *file = file_open(drive, getCurrentFolder(), name);
+    if (file == NULL) {
+        printf("Unable to find %s\n", name);
+        return nil;
+    }
+    if (file->type != FILE_TYPE_DIRECTORY) {
+        printf("Not a directory\n");
+        return nil;
+    }
+    currentFolder = file;
+    return nil;
+}
+
+Object *prim_mkdir(Object *args) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    file_close(drive, file_create(drive, getCurrentFolder(), name, FILE_TYPE_DIRECTORY));
+}
+
+Object *prim_mkfile(Object *args) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    file_close(drive, file_create(drive, getCurrentFolder(), name, FILE_TYPE_NORMAL));
+}
+
+Object *prim_delete(Object *args) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    File *file = file_open(drive, getCurrentFolder(), name);
+    if (file == NULL) {
+        printf("Unable to find file: %s\n", name);
+        return nil;
+    }
+    file_delete(drive, getCurrentFolder(), file);
+    return nil;
+}
+
+Object *prim_cat(Object *args){
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    File *file = file_open(drive, getCurrentFolder(), name);
+    if (file == NULL) {
+        printf("Unable to find file: %s\n", name);
+        return nil;
+    }
+
+    Object *index = getElem(args, 1);
+    int block = index->type != INT ? 0 : index->number;
+
+    char buffer[1024];
+
+    file_read(drive, file, byteArrayOf(&buffer, 1024), block * 1024);
+
+    // print
+    const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    int base = 10;
+
+    putchar('\n');
+    for (int i = 0; i < 16; ++i) {
+        putchar(digits[i / base]);
+        putchar(digits[i % base]);
+        putchar(' ');
+        for (int j = 0; j < 64; ++j) {
+            char c = buffer[i * 64 + j];
+            if (c == 0) {
+                putchar('.');
+            } else {
+                putchar(c);
+            }
+        }
+        putchar('\n');
+    }
+}
+
+Object *prim_load(Object *args){
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    File *file = file_open(drive, getCurrentFolder(), name);
+    if (file == NULL) {
+        printf("Unable to find file: %s\n", name);
+        return nil;
+    }
+
+    int line_num = getLineNumber();
+    setInputFile(file);
+    setLineNumber(1);
+    Object *input, *output = nil;
+    while (canReadMore()) {
+        //read input
+        input = readObj();
+
+        if (setjmp(onError) == 0) {
+            //eval
+            output = eval(input, top_env);
+            //print output
+            if (!write_output_flag) {
+                printObjFormatted(output);
+                printf("\n");
+            }
+        }else{
+            break;
+        }
+        write_output_flag = 0;
+        if (output == NULL) break;
+    }
+    setInputFile(NULL);
+    setLineNumber(line_num);
 }

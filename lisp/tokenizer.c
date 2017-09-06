@@ -2,11 +2,7 @@
 // Created by cout970 on 2017-08-12.
 //
 
-#include "tokenizer.h"
-#include "globals.h"
-#include "constructors.h"
-#include "environment.h"
-#include "read.h"
+#include "lisp.h"
 
 char tokenBuffer[100];
 int tokenBufferPtr;
