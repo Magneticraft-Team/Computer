@@ -4,7 +4,10 @@
 
 #include "fs_utils.h"
 #include "../api/string.h"
+#include "../api/stdio.h"
 #include "../util/static_list.h"
+
+//#define PRINT_DEBUG
 
 int file_equals(File *a, File *b) {
     return a->firstBlock == b->firstBlock;
@@ -18,10 +21,15 @@ static int file_is_open(File *file) {
 }
 
 static int get_file_in_folder(DiskDrive drive, File *folder, const char *name) {
+    if (folder->type != FILE_TYPE_DIRECTORY) return NULL_SECTOR;
+
     int entryCount = folder->size / sizeof(DirectoryEntry);
     DirectoryEntry entry;
     for (int i = 0; i < entryCount; ++i) {
         file_read(drive, folder, byteArrayOf(&entry, sizeof(DirectoryEntry)), sizeof(DirectoryEntry) * i);
+#ifdef PRINT_DEBUG
+        printf("[get_file_in_folder] Entry: '%s', %d, name: %s\n", entry.name, entry.firstBlock, name);
+#endif
         if (strcmp(entry.name, name) == 0) {
             return entry.firstBlock;
         }
@@ -29,32 +37,47 @@ static int get_file_in_folder(DiskDrive drive, File *folder, const char *name) {
     return NULL_SECTOR;
 }
 
+// remove child from parent
 static int folder_remove_child(DiskDrive drive, File *parent, File *child) {
-    if (parent == NULL) return 0;
-    if (parent->type != FILE_TYPE_DIRECTORY) return 0;
+    if (child == NULL) {
+#ifdef PRINT_DEBUG
+        printf("[folder_remove_child] null child, parent: (0x%x)'%s'\n", (unsigned int) parent,
+               parent != NULL ? parent->name : "null");
+#endif
+        return 0;
+    }
+    if (parent == NULL) {
+#ifdef PRINT_DEBUG
+        printf("[folder_remove_child] null parent, child: (0x%x)'%s'\n", (unsigned int) child, child->name);
+#endif
+        return 0;
+    }
+    if (parent->type != FILE_TYPE_DIRECTORY) {
+#ifdef PRINT_DEBUG
+        printf("[folder_remove_child] parent non directory\n");
+#endif
+        return 0;
+    }
 
-    // remove file from parent folder
     DirectoryEntry entry;
-    int offset = 0;
-    int read;
-    do {
-        read = file_read(drive, parent, byteArrayOf(&entry, sizeof(DirectoryEntry)), offset);
-        if (read == sizeof(DirectoryEntry) && strcmp(entry.name, child->name) == 0) {
-            // start moving all entries
-            do {
-                read = file_read(drive, parent, byteArrayOf(&entry, sizeof(DirectoryEntry)), offset + sizeof(DirectoryEntry));
-                if (read == 0) break;
-                file_write(drive, parent, byteArrayOf(&entry, sizeof(DirectoryEntry)), offset);
-                offset += sizeof(DirectoryEntry);
-            } while (1);
+    int entries = parent->size / sizeof(DirectoryEntry);
+    int found = 0;
 
-            file_truncate(drive, parent, parent->size - sizeof(DirectoryEntry));
-            return 1;
+    for (int i = 0; i < entries; ++i) {
+        file_read(drive, parent, byteArrayOf(&entry, sizeof(DirectoryEntry)), i * sizeof(DirectoryEntry));
+        if (found) {
+            // move this entry to the previous location, to shift entries to fill the space of the removed entry
+            file_write(drive, parent, byteArrayOf(&entry, sizeof(DirectoryEntry)), (i - 1) * sizeof(DirectoryEntry));
+        } else if (strcmp(entry.name, child->name) == 0) {
+            found = 1;
         }
-        offset += sizeof(DirectoryEntry);
-    } while (read != 0);
+    }
 
-    return 0;
+    if (found) {
+        file_truncate(drive, parent, (entries - 1) * sizeof(DirectoryEntry));
+    }
+
+    return found;
 }
 
 static void makeFsIfNeeded(DiskDrive drive) {
@@ -97,8 +120,17 @@ File *file_open(DiskDrive drive, File *parent, const char *name) {
     if (sector == NULL_SECTOR) return NULL;
 
     load_sector(drive, sector);
-    FileFirstBlock *header = (FileFirstBlock *) disk_drive_get_buffer(drive);\
+    FileFirstBlock *header = (FileFirstBlock *) disk_drive_get_buffer(drive);
 
+    if (strcmp(header->metadata.name, name) != 0) {
+        if (strcmp("..", name) != 0 && strcmp(".", name) != 0) {
+#ifdef PRINT_DEBUG
+            printf("[file_open] different folder entry name and file name: entry: '%s', file: '%s'\n",
+                   name, header->metadata.name);
+            strcpy(header->metadata.name, name);
+#endif
+        }
+    }
     return open_files_add(&header->metadata);
 }
 
@@ -124,6 +156,7 @@ File *file_create(DiskDrive drive, File *parent, const char *name, int type) {
     if (parent->type != FILE_TYPE_DIRECTORY) return NULL;
     if (strlen(name) >= FILE_MAX_NAME_SIZE) return NULL;
     if (file_open_count() >= MAX_OPEN_FILES) return NULL;
+    if (get_file_in_folder(drive, parent, name) != NULL_SECTOR) return NULL;
 
     int sector = allocate_sector(drive);
     load_sector(drive, sector);
@@ -144,7 +177,7 @@ File *file_create(DiskDrive drive, File *parent, const char *name, int type) {
     DirectoryEntry newEntry;
     memset(&newEntry, 0, sizeof(DirectoryEntry));
     newEntry.firstBlock = file->firstBlock;
-    memcpy(newEntry.name, file->name, FILE_MAX_NAME_SIZE);
+    strcpy(newEntry.name, file->name);
 
     file_append(drive, parent, byteArrayOf(&newEntry, sizeof(DirectoryEntry)));
 
@@ -169,10 +202,15 @@ File *file_create(DiskDrive drive, File *parent, const char *name, int type) {
     return file;
 }
 
-void file_delete(DiskDrive drive, File *parent, File *file) {
+int file_delete(DiskDrive drive, File *parent, File *file) {
     // you can't delete the root directory
-    if (file == &open_files.items[0].data) return;
-    if (!folder_remove_child(drive, parent, file)) return;
+    if (file == &open_files.items[0].data) {
+#ifdef PRINT_DEBUG
+        printf("[file_delete] Trying to delete root directory\n");
+#endif
+        return 0;
+    }
+    if (!folder_remove_child(drive, parent, file)) return 0;
 
     if (file->type == FILE_TYPE_DIRECTORY) {
         DirectoryEntry entry;
@@ -194,4 +232,5 @@ void file_delete(DiskDrive drive, File *parent, File *file) {
 
     // remove file from openFiles
     file_close(drive, file);
+    return 1;
 }

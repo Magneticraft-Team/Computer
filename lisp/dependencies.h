@@ -9,6 +9,7 @@
 #include "../driver/api/motherboard.h"
 #include "../driver/api/monitor.h"
 #include "../driver/api/disk_drive.h"
+#include "../driver/api/robot.h"
 
 #include "../stdlib/api/stdio.h"
 #include "../stdlib/api/stdlib.h"

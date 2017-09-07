@@ -57,6 +57,7 @@ int allocate_sector(DiskDrive drive) {
 }
 
 void free_sector(DiskDrive drive, int sector) {
+    if(sector == NULL_SECTOR) return;
     load_sector(drive, sector);
     BlockHeader *header = (BlockHeader *) disk_drive_get_buffer(drive);
     header->firstBlock = NULL_SECTOR;

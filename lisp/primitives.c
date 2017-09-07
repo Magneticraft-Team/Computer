@@ -3,6 +3,7 @@
 //
 
 #include "lisp.h"
+#include "dependencies.h"
 
 /*** Primitives ***/
 
@@ -88,12 +89,10 @@ Object *prim_print(Object *args) {
 Object *prim_clear(Object *args IGNORED) {
     clear_screen();
     monitor_set_cursor_pos_y(motherboard_get_monitor(), 0);
-    write_output_flag = 1;
     return nil;
 }
 
-Object *prim_free(Object *args) {
-    if (!isNil(args)) { printf(""); }
+Object *prim_print_free(Object *args IGNORED) {
     int used = (int) malloc(4);
     free((void *) used);
     register int *sp asm ("sp");
@@ -102,6 +101,15 @@ Object *prim_free(Object *args) {
     printf("%d bytes used, %d bytes free, malloc ptr: %d, string count: %d, sp: %d\n",
            total_malloc, free, used, string_count, (int) sp);
     return nil;
+}
+
+Object *prim_free(Object *args IGNORED) {
+    int used = (int) malloc(4);
+    free((void *) used);
+    register int *sp asm ("sp");
+
+    int free = motherboard_get_memory_size() - used - (0xFFFF - (int) sp);
+    return createInt(free);
 }
 
 Object *prim_env(Object *args IGNORED) {
@@ -263,28 +271,34 @@ Object *prim_network(Object *args IGNORED) {
     }
     printf("%s (%d)\n", network_get_input_buffer(net), network_get_input_pointer(net));
 
+
     network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
     return nil;
 }
 
 // IO
 
-static File *currentFolder = NULL;
+File *currentFolder = NULL;
+
+inline int hasDisk() {
+    return disk_drive_has_disk(motherboard_get_floppy_drive());
+}
 
 inline DiskDrive getDisk() {
     DiskDrive drive = motherboard_get_floppy_drive();
-    if (currentFolder == NULL) {
-        currentFolder = (int) file_get_root(drive);
+    if (hasDisk()) {
+        if (currentFolder == NULL) {
+            currentFolder = file_get_root(drive);
+        }
+    } else {
+        currentFolder = NULL;
     }
+
     return drive;
 }
 
 inline File *getCurrentFolder() {
     return currentFolder;
-}
-
-inline int hasDisk() {
-    return disk_drive_has_disk(motherboard_get_floppy_drive());
 }
 
 Object *prim_ls(Object *args IGNORED) {
@@ -296,7 +310,6 @@ Object *prim_ls(Object *args IGNORED) {
     DiskDrive drive = getDisk();
     File *folder = getCurrentFolder();
     int entryCount = folder->size / sizeof(DirectoryEntry);
-    putchar('\n');
     DirectoryEntry entry;
     for (int i = 0; i < entryCount; ++i) {
         file_read(drive, folder, byteArrayOf(&entry, sizeof(DirectoryEntry)), sizeof(DirectoryEntry) * i);
@@ -316,7 +329,7 @@ Object *prim_cd(Object *args) {
     if (isNil(args)) return nil;
     Object *a = getElem(args, 0);
     if (a->type != SYM) {
-        printf("");
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
         return nil;
     }
 
@@ -355,6 +368,7 @@ Object *prim_mkdir(Object *args) {
     if (name == NULL) return nil;
 
     file_close(drive, file_create(drive, getCurrentFolder(), name, FILE_TYPE_DIRECTORY));
+    return nil;
 }
 
 Object *prim_mkfile(Object *args) {
@@ -376,6 +390,7 @@ Object *prim_mkfile(Object *args) {
     if (name == NULL) return nil;
 
     file_close(drive, file_create(drive, getCurrentFolder(), name, FILE_TYPE_NORMAL));
+    return nil;
 }
 
 Object *prim_delete(Object *args) {
@@ -401,11 +416,15 @@ Object *prim_delete(Object *args) {
         printf("Unable to find file: %s\n", name);
         return nil;
     }
-    file_delete(drive, getCurrentFolder(), file);
+    if (file_delete(drive, getCurrentFolder(), file)) {
+        printf("%s removed\n", file->name);
+    } else {
+        printf("Unable to remove %s\n", file->name);
+    }
     return nil;
 }
 
-Object *prim_cat(Object *args){
+Object *prim_cat(Object *args) {
     if (!hasDisk()) {
         printf("No disk\n");
         return nil;
@@ -431,16 +450,16 @@ Object *prim_cat(Object *args){
 
     Object *index = getElem(args, 1);
     int block = index->type != INT ? 0 : index->number;
-
+    printf("[cat] Block: %d\n", block);
     char buffer[1024];
 
+    memset(buffer, 0, 1024);
     file_read(drive, file, byteArrayOf(&buffer, 1024), block * 1024);
 
     // print
     const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     int base = 10;
 
-    putchar('\n');
     for (int i = 0; i < 16; ++i) {
         putchar(digits[i / base]);
         putchar(digits[i % base]);
@@ -455,9 +474,11 @@ Object *prim_cat(Object *args){
         }
         putchar('\n');
     }
+    file_close(drive, file);
+    return nil;
 }
 
-Object *prim_load(Object *args){
+Object *prim_load(Object *args) {
     if (!hasDisk()) {
         printf("No disk\n");
         return nil;
@@ -493,16 +514,103 @@ Object *prim_load(Object *args){
             //eval
             output = eval(input, top_env);
             //print output
-            if (!write_output_flag) {
+            if (output != nil) {
                 printObjFormatted(output);
                 printf("\n");
             }
-        }else{
+        } else {
             break;
         }
-        write_output_flag = 0;
         if (output == NULL) break;
     }
     setInputFile(NULL);
     setLineNumber(line_num);
+    return nil;
+}
+
+Object *prim_mkfs(Object *args IGNORED) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+    makeFs(getDisk());
+    return nil;
+}
+Object *prim_file_info(Object *args) {
+    if (!hasDisk()) {
+        printf("No disk\n");
+        return nil;
+    }
+
+    DiskDrive drive = getDisk();
+
+    if (isNil(args)) return nil;
+    Object *a = getElem(args, 0);
+    if (a->type != SYM) {
+        printf("Invalid type: %s, expected symbol\n", objTypeNames[a->type]);
+        return nil;
+    }
+
+    const char *name = a->string;
+    if (name == NULL) return nil;
+
+    File *file = file_open(drive, getCurrentFolder(), name);
+    if (file == NULL) {
+        printf("Unable to find file: %s\n", name);
+        return nil;
+    }
+
+    printf("File {\n name = '%s',\n size = %d,\n firstBlock = %d,\n nextBlock = %d\n type = %s,\n parentFirstBlock = %d\n lastModified = %d\n}\n",
+           file->name, file->size, file->firstBlock, file->nextBlock,
+           file->type == FILE_TYPE_DIRECTORY ? "directory" : "normal",
+           file->parent, file->lastModified);
+
+    file_close(drive, file);
+    return nil;
+}
+
+// Robot
+
+static int robot_signal(int signal) {
+    volatile struct mining_robot *robot = (struct mining_robot *) 0xFF030000;
+
+    // Send signal
+    robot->signal = (i8) signal;
+
+    // wait for robot response
+    motherboard_sleep(1);
+
+    // wait for task to finish
+    motherboard_sleep(robot->cooldown);
+
+    // push result to the stack
+    return robot->failReason;
+}
+
+Object *prim_front(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_MOVE_FORWARD));
+}
+
+Object *prim_back(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_MOVE_BACK));
+}
+
+Object *prim_left(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_ROTATE_LEFT));
+}
+
+Object *prim_right(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_ROTATE_RIGHT));
+}
+
+Object *prim_up(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_ROTATE_UP));
+}
+
+Object *prim_down(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_ROTATE_DOWN));
+}
+
+Object *prim_mine(Object *args IGNORED) {
+    return createInt(robot_signal(ROBOT_SIGNAL_MINE_BLOCK));
 }

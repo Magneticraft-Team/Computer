@@ -80,6 +80,7 @@ void readToken() {
     // Number
     if (isdigit(currentChar)) {
         tokenType = NUMBER;
+        currentChar = getNextChar();
         readNumber(currentChar);
         return;
     }

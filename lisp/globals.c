@@ -13,8 +13,6 @@ int line_num = 0;
 int total_malloc = 0;
 // total number of string allocated
 int string_count = 0;
-// used to not print evaluation output
-int write_output_flag = 0;
 // last object index, used to get the unique number of each object
 int lastNum = 0;
 

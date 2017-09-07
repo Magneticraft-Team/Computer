@@ -6,6 +6,7 @@
 #include "../api/math.h"
 #include "../api/string.h"
 #include "../api/stdio.h"
+#include "filesystem.h"
 
 void makeFs(DiskDrive drive) {
 
@@ -175,15 +176,17 @@ int fileToArray(struct BlockBuffer buffer, struct ByteArray src, int offset) {
 
 int file_read(DiskDrive drive, File *file, struct ByteArray dst, int offset) {
     if (dst.data == NULL) {
-        printf("null data\n");
+        printf("[file_read] Null data buffer\n");
         return 0;
     }
     if (dst.length <= 0) {
-        printf("invalid length: %d\n", dst.length);
+        printf("[file_read] Invalid length: %d\n", dst.length);
         return 0;
     }
     if (offset >= file->size) {
-        printf("out of file: offset = %d, fileSize = %d\n", offset, file->size);
+        if (offset > file->size){
+            printf("[file_read] Offset out of file: offset = %d, fileSize = %d\n", offset, file->size);
+        }
         return 0;
     }
 
@@ -244,9 +247,23 @@ int file_write(DiskDrive drive, File *file, struct ByteArray src, int offset) {
         }
     }
 
+    // update file lastModified
+    if(writen > 0){
+        load_sector(drive, file->firstBlock);
+        FileFirstBlock *block = (FileFirstBlock *) disk_drive_get_buffer(drive);
+        file->lastModified = motherboard_get_minecraft_world_time();
+        block->metadata.lastModified = file->lastModified;
+        save_sector(drive);
+    }
+
     return writen;
 }
 
 int file_append(DiskDrive drive, File *file, struct ByteArray src) {
+    if(file == NULL) return 0;
+//    printf("[file_append] file = %s (0x%x), size = %d, src = { data = 0x%x, length = %d}\n",
+//           file->name, (unsigned int) file, file->size,
+//           (unsigned int) src.data, src.length);
+
     return file_write(drive, file, src, file->size);
 }

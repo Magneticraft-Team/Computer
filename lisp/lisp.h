@@ -194,7 +194,9 @@ Object *prim_print(Object *args);
 
 Object *prim_clear(Object *args IGNORED);
 
-Object *prim_free(Object *args);
+Object *prim_print_free(Object *args IGNORED);
+
+Object *prim_free(Object *args IGNORED);
 
 Object *prim_env(Object *args IGNORED);
 
@@ -240,7 +242,27 @@ Object *prim_cat(Object *args);
 
 Object *prim_load(Object *args);
 
+Object *prim_file_info(Object *args);
+
+Object *prim_mkfs(Object *args IGNORED);
+
 Object *prim_network(Object *args IGNORED);
+
+// robot
+
+Object *prim_front(Object *args IGNORED);
+
+Object *prim_back(Object *args IGNORED);
+
+Object *prim_left(Object *args IGNORED);
+
+Object *prim_right(Object *args IGNORED);
+
+Object *prim_up(Object *args IGNORED);
+
+Object *prim_down(Object *args IGNORED);
+
+Object *prim_mine(Object *args IGNORED);
 
 // GLOBALS
 
@@ -253,8 +275,6 @@ extern int line_num;
 extern int total_malloc;
 // total number of string allocated
 extern int string_count;
-// used to not print evaluation output
-extern int write_output_flag;
 // last object index, used to get the unique number of each object
 extern int lastNum;
 

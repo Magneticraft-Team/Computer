@@ -14,13 +14,13 @@ void init() {
     extend_top(tee, tee);
 
     //@formatter:off
-    quote       = getOrCreateSymbol("quote");
-    s_if        = getOrCreateSymbol("if");
-    s_lambda    = getOrCreateSymbol("lambda");
-    s_define    = getOrCreateSymbol("define");
-    s_defun     = getOrCreateSymbol("defun");
-    s_setb      = getOrCreateSymbol("set!");
-    s_begin     = getOrCreateSymbol("begin");
+    quote = getOrCreateSymbol("quote");
+    s_if = getOrCreateSymbol("if");
+    s_lambda = getOrCreateSymbol("lambda");
+    s_define = getOrCreateSymbol("define");
+    s_defun = getOrCreateSymbol("defun");
+    s_setb = getOrCreateSymbol("set!");
+    s_begin = getOrCreateSymbol("begin");
     //@formatter:on
 
     extend_top(getOrCreateSymbol("+"), createPrimop(prim_sum));
@@ -68,6 +68,7 @@ void init() {
 
     //memory
     extend_top(getOrCreateSymbol("free"), createPrimop(prim_free));
+    extend_top(getOrCreateSymbol("print_free"), createPrimop(prim_print_free));
     extend_top(getOrCreateSymbol("gc"), createPrimop(prim_gc));
 
     // fs
@@ -78,14 +79,16 @@ void init() {
     extend_top(getOrCreateSymbol("delete"), createPrimop(prim_delete));
     extend_top(getOrCreateSymbol("cat"), createPrimop(prim_cat));
     extend_top(getOrCreateSymbol("load"), createPrimop(prim_load));
+    extend_top(getOrCreateSymbol("file_info"), createPrimop(prim_file_info));
+    extend_top(getOrCreateSymbol("mkfs"), createPrimop(prim_mkfs));
 
-//    BLOCK
-//            FLUSH
-//    LIST
-//            LOAD
-//    WIPE
-//            PP
-//    OPEN
+    extend_top(getOrCreateSymbol("front"), createPrimop(prim_front));
+    extend_top(getOrCreateSymbol("back"), createPrimop(prim_back));
+    extend_top(getOrCreateSymbol("left"), createPrimop(prim_left));
+    extend_top(getOrCreateSymbol("right"), createPrimop(prim_right));
+    extend_top(getOrCreateSymbol("up"), createPrimop(prim_up));
+    extend_top(getOrCreateSymbol("down"), createPrimop(prim_down));
+    extend_top(getOrCreateSymbol("mine"), createPrimop(prim_mine));
 
     //extra
     extend_top(getOrCreateSymbol("debug"), createPrimop(prim_debug));
@@ -97,10 +100,10 @@ void init() {
 #include "../driver/api/boot.h"
 
 /*** Main Driver ***/
-void main(){
-//    clear_screen();
+void main() {
+    clear_screen();
     init();
-    printf("Lips Interpreter 1.0\n");
+    printf("Lips Interpreter 1.0\n%d bytes free\n", prim_free(nil)->number);
 
     initTokenizer();
     Object *input, *output = nil;
@@ -112,12 +115,11 @@ void main(){
             //eval
             output = eval(input, top_env);
             //print output
-            if (!write_output_flag) {
+            if (output != nil) {
                 printObjFormatted(output);
                 printf("\n");
             }
         }
-        write_output_flag = 0;
         if (output == NULL) break;
     }
     printf("Exit");

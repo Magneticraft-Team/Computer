@@ -90,7 +90,7 @@ int file_open_count();
 
 File *file_create(DiskDrive drive, File *parent, const char *name, int type);
 
-void file_delete(DiskDrive drive, File *parent, File *file);
+int file_delete(DiskDrive drive, File *parent, File *file);
 
 
 
