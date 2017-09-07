@@ -118,6 +118,7 @@ Object *prim_env(Object *args IGNORED) {
     for (symbolList = getRest(top_env); !isNil(symbolList); symbolList = getRest(symbolList)) {
         printf("%s ", getSymbolName(getFirst(getFirst(symbolList))));
     }
+    putchar('\n');
     return nil;
 }
 
@@ -127,6 +128,7 @@ Object *prim_symbols(Object *args IGNORED) {
     for (symbolList = all_symbols; !isNil(symbolList); symbolList = getRest(symbolList)) {
         printf("%s ", getSymbolName(getFirst(symbolList)));
     }
+    putchar('\n');
     return nil;
 }
 
@@ -450,7 +452,6 @@ Object *prim_cat(Object *args) {
 
     Object *index = getElem(args, 1);
     int block = index->type != INT ? 0 : index->number;
-    printf("[cat] Block: %d\n", block);
     char buffer[1024];
 
     memset(buffer, 0, 1024);
@@ -502,29 +503,8 @@ Object *prim_load(Object *args) {
         return nil;
     }
 
-    int line_num = getLineNumber();
     setInputFile(file);
-    setLineNumber(1);
-    Object *input, *output = nil;
-    while (canReadMore()) {
-        //read input
-        input = readObj();
 
-        if (setjmp(onError) == 0) {
-            //eval
-            output = eval(input, top_env);
-            //print output
-            if (output != nil) {
-                printObjFormatted(output);
-                printf("\n");
-            }
-        } else {
-            break;
-        }
-        if (output == NULL) break;
-    }
-    setInputFile(NULL);
-    setLineNumber(line_num);
     return nil;
 }
 
@@ -536,6 +516,7 @@ Object *prim_mkfs(Object *args IGNORED) {
     makeFs(getDisk());
     return nil;
 }
+
 Object *prim_file_info(Object *args) {
     if (!hasDisk()) {
         printf("No disk\n");

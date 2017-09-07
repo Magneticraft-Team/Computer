@@ -95,12 +95,9 @@ int charLook;
 
 char tokenBuffer[input_buffer_size];
 int tokenLook;
+int tokenNumberBase = 10;
 
 jmp_buf onError;
-
-//compilation output buffer
-int codeBufferIndex = 0;
-uint8_t codeBuffer[1024];
 
 typedef struct {
     char identifier[32];
@@ -110,10 +107,17 @@ typedef struct {
 int identifierTableIndex = 0;
 IdentifierItem identifierTable[128];
 
+#define CODE_BUFFER_SIZE (10 * 1024)
+
+//compilation output buffer
+int codeBufferIndex = 0;
+uint8_t codeBuffer[CODE_BUFFER_SIZE];
+
 void readChar() {
 
     if (inputIndex >= input_buffer_size || inputBuffer[inputIndex] == '\0') {
         charLook = -1;
+        return;
     }
     charLook = inputBuffer[inputIndex++];
 }
@@ -126,6 +130,55 @@ int stringDiff(const char *const a, const char *const b) {
         i++;
     }
     return 0;
+}
+
+int readNumber() {
+    int p = 0;
+    char *validDigits = "0123456789";
+    tokenNumberBase = 10;
+
+    if (charLook == '0') {
+        tokenNumberBase = 8;
+
+        tokenBuffer[p++] = (char) charLook;
+        readChar();
+
+        if (charLook == 'x') {
+            // x is not added to tokenBuffer
+            p--; // remove the first 0
+
+            //base 16, hexadecimal
+            tokenNumberBase = 16;
+            validDigits = "0123456789abcdefABCDEF";
+
+            //make sure we are still reading a number
+            readChar();
+            if (charLook == -1 || strchr(validDigits, charLook) == NULL) {
+                tokenBuffer[p] = '\0';
+                return ERROR;
+            }
+        } else {
+            // base 8, octal
+            tokenNumberBase = 8;
+            validDigits = "01234567";
+            if (charLook == -1 || strchr(validDigits, charLook) == NULL) {
+                tokenBuffer[p] = '\0';
+                return NUMBER;
+            }
+        }
+    }
+
+    do {
+        tokenBuffer[p++] = (char) charLook;
+        readChar();
+
+        if (charLook == -1) {
+            break;
+        }
+    } while (strchr(validDigits, charLook) != NULL);
+
+    tokenBuffer[p] = '\0';
+    return NUMBER;
 }
 
 int scanToken() {
@@ -166,17 +219,7 @@ int scanToken() {
         //number
     } else if (isdigit(charLook)) {
 
-        do {
-            tokenBuffer[p++] = (char) charLook;
-            readChar();
-
-            if (charLook == -1) {
-                break;
-            }
-        } while (isdigit(charLook));
-
-        tokenBuffer[p] = '\0';
-        return NUMBER;
+        return readNumber();
     } else {
         switch (charLook) {
             case '$':
@@ -282,7 +325,14 @@ int parseRegister() {
 
 int parseInt() {
     if (tokenLook == NUMBER) {
-        return atoi(tokenBuffer);
+        int len = strlen(tokenBuffer);
+        char *end = NULL;
+        int value = strtol(tokenBuffer, &end, tokenNumberBase);
+        if (end != (tokenBuffer + len)) {
+            printf("Error trying to parse integer: '%s'\n", tokenBuffer);
+            longjmp(onError, 1);
+        }
+        return value;
     } else {
         printf("Unknown token trying to parse an integer: \n");
         printToken(tokenLook);
@@ -351,7 +401,7 @@ void compileJInstruction(int opcode, int addr) {
 }
 
 void parse(int type, int code) {
-    int reg1, reg2, reg3, offset, addr = -1, i;
+    int reg1, reg2, reg3, offset, addr = -1, i, aux;
     switch (type) {
         case 0:// R: name $r1, $r2, $r3
             expect(DOLAR);
@@ -367,7 +417,7 @@ void parse(int type, int code) {
             reg3 = parseRegister();
             compileRInstruction(reg2, reg3, reg1, 0, code);
             break;
-        case 1:// I: name $s, $t, imm
+        case 1:// I: name $t, $s, imm
             expect(DOLAR);
             readToken();
             reg1 = parseRegister();
@@ -377,9 +427,10 @@ void parse(int type, int code) {
             reg2 = parseRegister();
             expect(COMA);
             expect(NUMBER);
-            compileIInstruction(code, reg1, reg2, atoi(tokenBuffer));
+            aux = parseInt();
+            compileIInstruction(code, reg2, reg1, aux);
             break;
-        case 2:// R: name $s, $t, imm
+        case 2:// R: name $d, $t, imm
             expect(DOLAR);
             readToken();
             reg1 = parseRegister();
@@ -389,7 +440,7 @@ void parse(int type, int code) {
             reg2 = parseRegister();
             expect(COMA);
             expect(NUMBER);
-            compileRInstruction(reg1, reg2, 0, atoi(tokenBuffer), code);
+            compileRInstruction(reg1, reg2, 0, parseInt(), code);
             break;
         case 3:// R: name $s, $t
             expect(DOLAR);
@@ -461,6 +512,19 @@ void parse(int type, int code) {
             readToken();
             reg1 = parseRegister();
             compileRInstruction(0, 0, reg1, 0, code);
+            break;
+        case 10:// I: name $s, $t, imm
+            expect(DOLAR);
+            readToken();
+            reg1 = parseRegister();
+            expect(COMA);
+            expect(DOLAR);
+            readToken();
+            reg2 = parseRegister();
+            expect(COMA);
+            expect(NUMBER);
+            aux = parseInt();
+            compileIInstruction(code, reg1, reg2, aux);
             break;
         default:
             break;
@@ -557,10 +621,10 @@ void parseLine() {
             parse(1, 0b001100);
             break;
         case BEQ://beq
-            parse(1, 0b000100);
+            parse(10, 0b000100);
             break;
         case BNE://bne
-            parse(1, 0b000101);
+            parse(10, 0b000101);
             break;
         case ORI://ori
             parse(1, 0b001101);
@@ -617,7 +681,7 @@ void parseLine() {
             parse(0, 0b100110);
             break;
         case NOOP:
-            write(0b001100);
+            write(0b000000);
             break;
         case SYSCALL:
             write(0b001100);
@@ -651,6 +715,24 @@ int loopTick() {
 
     if (!stringDiff(inputBuffer, ":exit")) {
         return 1;
+    } else if (!stringDiff(inputBuffer, ":write")) {
+        writeToDisk();
+        return 0;
+    } else if (!stringDiff(inputBuffer, ":size")) {
+        printf("Using: %d bytes\n", codeBufferIndex * 4);
+        return 0;
+    } else if (!stringDiff(inputBuffer, ":free")) {
+        printf("%d bytes free\n", CODE_BUFFER_SIZE - (codeBufferIndex * 4));
+        return 0;
+    } else if (!stringDiff(inputBuffer, ":clear")) {
+        clear_screen();
+        return 0;
+    } else if (!stringDiff(inputBuffer, ":reset")) {
+        codeBufferIndex = 0;
+        return 0;
+    } else if (!stringDiff(inputBuffer, ":help")) {
+        printf("Available commands: :exit, :write, :free, :size, :clear, :reset\n");
+        return 0;
     }
 
     //reset
@@ -668,9 +750,34 @@ int loopTick() {
     return 0;
 }
 
-void printCode() {
-    printf("\n");
-    for (int i = 0; i < codeBufferIndex; ++i) {
-        printf("0x%08x\n", ((int *) codeBuffer)[i]);
+void writeToDisk() {
+
+    DiskDrive drive = motherboard_get_floppy_drive();
+
+    if (disk_drive_has_disk(drive)) {
+
+        printf("Writing...\n");
+        int size = codeBufferIndex * 4;
+        int blocks = size / 1024 + 1;
+
+        for (int i = 0; i < blocks; ++i) {
+            disk_drive_set_current_sector(drive, i);
+            i8 volatile *buff = disk_drive_get_buffer(drive);
+            int toWrite = min(1024, size);
+
+            memset((void *) buff, 0, 1024);
+            memcpy((void *) buff, codeBuffer + i * 1024, (size_t) toWrite);
+
+            disk_drive_signal(drive, DISK_DRIVE_SIGNAL_WRITE);
+            motherboard_sleep((i8) disk_drive_get_access_time(drive));
+            size -= toWrite;
+        }
+        printf("Written %d bytes\n", codeBufferIndex * 4);
+    } else {
+        printf("Disk not found\n");
+        for (int i = 0; i < codeBufferIndex; ++i) {
+            printf("0x%x ", ((int *) codeBuffer)[i]);
+        }
+        putchar('\n');
     }
 }

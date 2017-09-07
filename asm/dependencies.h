@@ -16,5 +16,6 @@
 #include "../stdlib/api/string.h"
 #include "../stdlib/api/ctype.h"
 #include "../stdlib/api/setjmp.h"
+#include "../stdlib/api/math.h"
 
 #endif //MAGNETICRAFTCOMPUTER_DEPENDENCIES_H

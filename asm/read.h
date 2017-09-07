@@ -7,6 +7,4 @@
 
 void readLine(char* buffer, int maxSize);
 
-int getLineNumber();
-
 #endif //MAGNETICRAFTCOMPUTER_READ_H

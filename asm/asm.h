@@ -11,6 +11,6 @@ int stringDiff(const char *const a, const char *const b);
 
 int loopTick();
 
-void printCode();
+void writeToDisk();
 
 #endif //COMPUTER_ASM_H

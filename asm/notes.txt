@@ -15,19 +15,25 @@ name $r1, $r2, $r3: (done)
     subu
     xor
 
-name $s, $t, imm: (done)
+name $t, $s, imm: (done)
     addi
     addiu
     andi
-    beq
-    bne
     ori
-    sll
     slti
     sltiu
-    sra
-    srl
     xori
+
+name $s, $t, imm: (done)
+    beq
+    bne
+
+
+name $d, $t, imm: (done)
+    srl
+    sll
+    sra
+
 
 name $s, imm: (done)
     bgez

@@ -5,33 +5,18 @@
 #include "read.h"
 #include "dependencies.h"
 
-int lineNum = 0;
-int useDisk = 0;
-FILE* fileWord = NULL;
+FILE *fileWord = NULL;
 
-void readLineTerminal(char* buffer, int maxSize){
-    printf("%d > ", ++lineNum);
+void readLineTerminal(char *buffer, int maxSize) {
+    printf("> ");
     fgets(buffer, maxSize, stdin);
     putchar('\n');
 }
 
-void readLineDisk(char* buffer, int maxSize){
-    lineNum++;
-    fgets(buffer, maxSize, fileWord);
-}
-
-void init(){
+void init() {
     fileWord = fopen("/devices/disk0", "r");
 }
 
-void readLine(char* buffer, int maxSize) {
-    if (useDisk) {
-        readLineDisk(buffer, maxSize);
-    } else {
-        readLineTerminal(buffer, maxSize);
-    }
-}
-
-int getLineNumber(){
-    return lineNum;
+void readLine(char *buffer, int maxSize) {
+    readLineTerminal(buffer, maxSize);
 }

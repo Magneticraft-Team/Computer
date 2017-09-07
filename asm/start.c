@@ -4,14 +4,13 @@
 #include "dependencies.h"
 #include "asm.h"
 
+#include "../driver/api/boot.h"
+
 /*** Main Driver ***/
-int main() {
+void main() {
     clear_screen();
     printf("ASM 1.0\n");
+    printf("Type ':help' for command list\n");
 
     while (!loopTick());
-
-    printCode();
-
-    return 0;
 }

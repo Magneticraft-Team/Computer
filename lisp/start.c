@@ -107,11 +107,12 @@ void main() {
 
     initTokenizer();
     Object *input, *output = nil;
-    while (canReadMore()) {
-        //read input
-        input = readObj();
+    while (1) {
 
         if (setjmp(onError) == 0) {
+            //read input
+            input = readObj();
+
             //eval
             output = eval(input, top_env);
             //print output

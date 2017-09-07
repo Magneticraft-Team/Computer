@@ -553,7 +553,8 @@ void fun_block() {
     }
 
     if (currentBlock != 0 && currentBlock != block) {
-        int written = file_write(drive, (File *) *fileWord->data, byteArrayOf(blockBuffer, 1024), (currentBlock - 1) * 1024);
+//        int written =
+                file_write(drive, (File *) *fileWord->data, byteArrayOf(blockBuffer, 1024), (currentBlock - 1) * 1024);
 //        printf("Saving old block: %d (%d), written: %d\n", currentBlock, (currentBlock - 1) * 1024, written);
     }
 
