@@ -4,13 +4,14 @@
 
 //#define USE_DEBUG_LOG
 
-#include "motherboard.h"
-#include "debug.h"
+#include <motherboard.h>
+#include <debug.h>
 
 static Monitor *monitor;
 static DiskDrive *floppyDrive;
 
 void clear_screen();
+
 int readDisk();
 
 void main() {
@@ -45,7 +46,7 @@ void *memcpy(void *dest, const void *src, int n) {
     return dest;
 }
 
-int isEmpty(char *buff, int n) {
+int isEmpty(char volatile *buff, int n) {
     unsigned char sum = 0;
     for (int i = 0; i < n; ++i) {
         sum |= buff[i];
@@ -54,7 +55,8 @@ int isEmpty(char *buff, int n) {
 }
 
 int readDisk() {
-    char *ptr = 0x0, *buffer;
+    char *ptr = 0x0;
+    char volatile *buffer;
     int i;
     int sectors = disk_drive_get_num_sectors(floppyDrive);
 
