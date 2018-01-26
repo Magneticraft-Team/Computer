@@ -4,28 +4,38 @@
 
 //#define USE_DEBUG_LOG
 
-#include "../driver/api/motherboard.h"
-#include "../driver/api/monitor.h"
-#include "../driver/api/disk_drive.h"
-#include "../driver/util/printf.h"
+#include "motherboard.h"
+#include "debug.h"
 
-void clear_screen() {
-    Monitor mon = motherboard_get_monitor();
-    int lines = monitor_get_num_lines(mon);
-    int columns = monitor_get_num_columns(mon);
-    int i;
+static Monitor *monitor;
+static DiskDrive *floppyDrive;
 
-    for (i = 0; i < columns; i++) {
-        monitor_get_line_buffer(mon)[i] = 0x20;
+void clear_screen();
+int readDisk();
+
+void main() {
+
+    monitor = motherboard_get_monitor();
+    floppyDrive = motherboard_get_floppy_drive();
+
+#ifdef USE_DEBUG_LOG
+    motherboard_set_debug_log_type(motherboard, MOTHERBOARD_LOG_TYPE_CHAR);
+#else
+    clear_screen();
+#endif
+
+    if (disk_drive_has_disk(floppyDrive)) {
+        kdebug("Loading...\n");
+        int loaded = readDisk();
+        kdebug("Loaded %d sectors\n", loaded);
+        if (loaded > 0) {
+            kdebug("Jumping to boot...\n");
+            asm volatile("jal 0");
+        }
+    } else {
+        kdebug("No floppy disk found\n");
     }
-
-    for (i = 0; i < lines; i++) {
-        monitor_set_selected_line(mon, i);
-        monitor_signal(mon, MONITOR_SIGNAL_WRITE);
-    }
-    monitor_set_selected_line(mon, 0);
-    monitor_set_cursor_pos_y(mon, 0);
-    monitor_set_cursor_pos_x(mon, 0);
+    kdebug("Halting cpu");
 }
 
 void *memcpy(void *dest, const void *src, int n) {
@@ -43,26 +53,27 @@ int isEmpty(char *buff, int n) {
     return sum == 0;
 }
 
-int readDisk(DiskDrive drive) {
+int readDisk() {
     char *ptr = 0x0, *buffer;
     int i;
-    int sectors = disk_drive_get_num_sectors(drive);
+    int sectors = disk_drive_get_num_sectors(floppyDrive);
 
-    if(sectors > 36) sectors = 36;
+    // limit program size to 36K
+    if (sectors > 36) sectors = 36;
     int wasEmpty = 0;
 
     for (i = 0; i < sectors; ++i) {
 
-        disk_drive_set_current_sector(drive, i);
-        disk_drive_signal(drive, DISK_DRIVE_SIGNAL_READ);
-        buffer = (char *) disk_drive_get_buffer(drive);
+        disk_drive_set_current_sector(floppyDrive, i);
+        disk_drive_signal(floppyDrive, DISK_DRIVE_SIGNAL_READ);
+        buffer = disk_drive_get_buffer(floppyDrive);
 
-        motherboard_sleep((i8) disk_drive_get_access_time(drive));
+        motherboard_sleep((Byte) disk_drive_get_access_time(floppyDrive));
 
-        memcpy(ptr + i * 1024, (const void *) buffer, 1024);
+        memcpy(ptr + i * 1024, (const Ptr) buffer, 1024);
         // stop at the second empty sector
-        if (isEmpty(buffer, 1024)){
-            if(wasEmpty) break;
+        if (isEmpty(buffer, 1024)) {
+            if (wasEmpty) break;
             wasEmpty = 1;
         }
     }
@@ -70,28 +81,23 @@ int readDisk(DiskDrive drive) {
     return i;
 }
 
-void main() {
 
-#ifdef USE_DEBUG_LOG
-    motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);
-#else
-    clear_screen();
-#endif
+void clear_screen() {
+    int lines = monitor_get_num_lines(monitor);
+    int columns = monitor_get_num_columns(monitor);
+    int i;
 
-    DiskDrive floppyDrive = motherboard_get_floppy_drive();
-
-    if (disk_drive_has_disk(floppyDrive)) {
-        printf("Loading...\n");
-        int loaded = readDisk(floppyDrive);
-        printf("Loaded %d sectors\n", loaded);
-        if(loaded > 0){
-            printf("Jumping to boot...\n");
-            asm volatile("jal 0");
-        }
-    } else {
-        printf("No floppy disk found\n");
+    for (i = 0; i < columns; i++) {
+        monitor_get_line_buffer(monitor)[i] = 0x20;
     }
-    printf("Halting cpu");
-}
 
+    for (i = 0; i < lines; i++) {
+        monitor_set_selected_line(monitor, i);
+        monitor_signal(monitor, MONITOR_SIGNAL_WRITE);
+    }
+
+    monitor_set_selected_line(monitor, 0);
+    monitor_set_cursor_pos_y(monitor, 0);
+    monitor_set_cursor_pos_x(monitor, 0);
+}
 
