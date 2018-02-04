@@ -6,7 +6,6 @@
 
 #include <motherboard.h>
 #include <network.h>
-#include <kprint.h>
 #include "debug.h"
 #include "filesystem.h"
 
@@ -17,6 +16,10 @@ void print_info();
 void test_fs();
 
 void clear_monitor(Monitor *mon);
+
+void test_network_pastebin(NetworkCard *, INodeRef);
+
+static NetworkCard *net = NULL;
 
 void main() {
 
@@ -29,6 +32,9 @@ void main() {
     run_tests();
     print_info();
     test_fs();
+    if (net) {
+        test_network_pastebin(net, 2);
+    }
 }
 
 void assert(Int expected, Int value, const char *msg) {
@@ -163,10 +169,10 @@ void print_network_data(NetworkCard *net) {
     kdebug("\tOutput buffer: %x\n", (int) net->outputBuffer);
 }
 
-void test_network_pastebin(NetworkCard *net) {
+void test_network_pastebin(NetworkCard *net, INodeRef file) {
     int i;
 
-    kdebug("Connecting to pastebin.com...");
+    kdebug("Connecting to pastebin.com...\n");
     network_set_target_ip(net, "pastebin.com");
     network_set_target_port(net, 443);
     network_set_input_pointer(net, 0);
@@ -190,21 +196,22 @@ void test_network_pastebin(NetworkCard *net) {
         motherboard_sleep(1);
     }
 
+    int offset = 0;
     // wait for response to arrive and print it
     while (network_is_connection_open(net)) {
 
         while (!network_get_input_pointer(net) && network_is_connection_open(net)) {
             motherboard_sleep(1);
         }
-        kprintsn(network_get_input_buffer(net), network_get_input_pointer(net));
-
+        offset += fs_write(file, network_get_input_buffer(net), offset, network_get_input_pointer(net));
         network_set_input_pointer(net, 0);
     }
 
     network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
-    kdebug("Connection closed");
+    kdebug("Connection closed\n");
+    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
+           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
 }
-
 
 void run_tests() {
     kdebug("Starting tests\n");
@@ -215,10 +222,8 @@ void run_tests() {
     kdebug("All tests passed\n");
 }
 
-
 void print_info() {
     int count = 0, i;
-    NetworkCard *net = NULL;
 
     print_motherboard_data();
 
@@ -264,15 +269,17 @@ void print_info() {
 }
 
 void test_ls(INodeRef currentFolder) {
+
+    struct DirectoryIterator iter;
     struct INode node;
-    struct DirectoryEntry entry;
-    int read;
-    for (int i = 0;; ++i) {
-        read = fs_read(currentFolder, (ByteBuffer) &entry, i * sizeof(struct DirectoryEntry),
-                       sizeof(struct DirectoryEntry));
-        if (!read) break;
-        kdebug("%s", entry.name);
-        fs_getINode(entry.inode, &node);
+
+    fs_iterInit(currentFolder, &iter);
+
+    while (fs_iterNext(&iter)) {
+        kdebug("%s", iter.entry.name);
+
+        // Check if is directory
+        fs_getINode(iter.entry.inode, &node);
         if (node.flags == FS_FLAG_DIRECTORY) {
             kdebug("/");
         }
@@ -281,37 +288,71 @@ void test_ls(INodeRef currentFolder) {
 }
 
 void test_fs() {
+    kdebug("Create fs\n");
     fs_format();
+    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
+           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
     INodeRef folder = fs_getRoot();
     INodeRef child1 = fs_create(folder, "file.txt", FS_FLAG_FILE);
-    INodeRef child2 = fs_create(folder, "no_file.txt", FS_FLAG_FILE);
-    INodeRef folder2 = fs_create(folder, "stuff", FS_FLAG_DIRECTORY);
-    INodeRef child3 = fs_create(folder2, "file3.txt", FS_FLAG_FILE);
-
-    char *text1 = "file1: hola mundo!!";
-    char *text2 = "file2: hello world!!";
-    fs_write(child1, text1, 0, strlen(text1) + 1);
-    fs_write(child2, text2, 0, strlen(text2) + 1);
-
-    kdebug("> ls\n");
-    test_ls(folder);
-//    kdebug("> cd stuff && ls\n");
-//    test_ls(folder2);
-
-    fs_delete(folder, child2);
-
-    kdebug("> ls\n");
-    test_ls(folder);
-
-//    char buffer[1024];
-//    struct INode node;
+//    INodeRef child2 = fs_create(folder, "no_file.txt", FS_FLAG_FILE);
+//    INodeRef folder2 = fs_create(folder, "stuff", FS_FLAG_DIRECTORY);
+//    INodeRef child3 = fs_create(folder2, "file3.txt", FS_FLAG_FILE);
 //
-//    for (int j = 0; j < 20; j++) {
-//        memset(buffer, 30 + j, 1024);
-//        fs_write(child1, buffer, j * 1024, 1024);
+//    kdebug("Truncate file3, to size: %d\n", 1024 * 10);
+//    fs_truncate(child3, 1024 * 10);
+//    kdebug("Truncate file3, to size: 0\n");
+//    fs_truncate(child3, 0);
+//
+//    kdebug("Test file write fs\n");
+//    char *text1 = "file1: hola mundo!!";
+//    char *text2 = "file2: hello world!!";
+//    fs_write(child1, text1, 0, strlen(text1) + 1);
+//    fs_write(child2, text2, 0, strlen(text2) + 1);
+//    kdebug("\n");
+//
+//    kdebug("> ls\n");
+//    test_ls(folder);
+//
+//    kdebug("Delete files\n");
+//
+//    fs_delete(folder, child2);
+//    fs_delete(folder, child1);
+//    fs_delete(folder, folder2);
+//
+//    kdebug("> ls\n");
+//    test_ls(folder);
+//
+//    kdebug("Test fill disk\n");
+//
+//    char buffer[1024];
+//    char fileName[] = "a";
+//    INodeRef newFile;
+//
+//    for (int i = 'a'; i <= 'z'; ++i) {
+//
+//        memset(buffer, (char) i, 1024);
+//        fileName[0] = (char) i;
+//        newFile = fs_create(folder, fileName, FS_FLAG_FILE);
+//        kdebug("New file %d, at '%s'\n", newFile, fileName);
+//        fs_write(newFile, buffer, 0, 1024);
 //    }
-//    for (int j = 0; j < 20; j++) {
-//        memset(buffer, 50 + j, 1024);
-//        fs_write(child3, buffer, j * 1024, 1024);
-//    }
+//
+//    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
+//           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
+//
+//    kdebug("> ls\n");
+//    test_ls(folder);
+//    BlockRef child = fs_findFile(folder, "z");
+//    fs_delete(folder, child);
+//
+//    child = fs_findFile(folder, "t");
+//    fs_delete(folder, child);
+//
+//    kdebug("> ls\n");
+//    test_ls(folder);
+
+    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
+           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
+
+    kdebug("End\n");
 }

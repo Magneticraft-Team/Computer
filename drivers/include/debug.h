@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#define kdebug(...) printf(__VA_ARGS__)
+#define kdebug(...) do { printf(__VA_ARGS__); fflush(stdout); } while(0)
 #else
 #include "kprint.h"
 #define kdebug(...) kprint(__VA_ARGS__)

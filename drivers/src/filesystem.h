@@ -18,14 +18,16 @@ typedef Int BlockRef;
 #define FS_FLAG_DIRECTORY 2
 #define FS_MAGIC_NUMBER 0xCAFE1234
 #define FS_NULL_BLOCK_REF (-1)
+#define FS_NULL_INODE_REF FS_NULL_BLOCK_REF
 #define FS_INODES_PER_TABLE 15
 #define FS_NUM_DIRECT_BLOCKS 9
 #define FS_MAX_FILE_NAME_SIZE 32
+#define FS_BLOCK_GROUP_BITMAP_BYTES 16
 
 // 28 bytes
 struct PACKED BlockGroup {
     Int numberOfBlocks;     // Number of blocks in this group, max 128
-    Byte blockBitmap[16];   // Bitmap used check the free blocks in this group, the firsts bits are used for this BlockGroup data (128) / 8
+    Byte blockBitmap[FS_BLOCK_GROUP_BITMAP_BYTES];   // Bitmap used check the free blocks in this group, the firsts bits are used for this BlockGroup data (128) / 8
     Int blocksOffset;       // Number of blocks before the start of this group
     BlockRef inodeTable;    // block storing the first part of the INodeTable
 };
@@ -67,11 +69,27 @@ struct DirectoryEntry {
     INodeRef inode;
 };
 
+struct DirectoryIterator {
+    struct DirectoryEntry entry;
+    int index;
+    INodeRef directory;
+};
+
+// Initializes a directory iterator to list all the entries in the directory
+void fs_iterInit(INodeRef directory, struct DirectoryIterator* iter);
+
+// loads the next entry into the iterator, this must be called to get the first entry,
+// returns false if there is no entry to read
+Boolean fs_iterNext(struct DirectoryIterator* iter);
+
 // resets the filesystem cache, and changes the drive/disk in use
 void fs_init(DiskDrive *drive);
 
 // Formats the current disk
 void fs_format();
+
+// Returns the amount of free blocks left in this device
+Int fs_getFreeBlocks();
 
 // Get the device id of the current disk, or -1 if the disk is not formatted,
 // this can be used to check is a disk has changed or the disk doesn't have a format
@@ -92,7 +110,7 @@ Boolean fs_truncate(INodeRef inode, Int size);
 // Finds a file inside a directory
 INodeRef fs_findFile(INodeRef parent, String *name);
 
-// Get sthe inode information of this file, returns TRUE if success and FALSE otherwise
+// Get the inode information of this file, returns TRUE if success and FALSE otherwise
 Boolean fs_getINode(INodeRef inode, struct INode *dst);
 
 // Write to a file

@@ -12,4 +12,6 @@
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #endif
 
+#define CEIL_DIV(x, y) (((x) > 0)? 1 + ((x) - 1)/(y): ((x) / (y)))
+
 #endif //COMPUTER_MATH_H

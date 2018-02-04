@@ -3,21 +3,38 @@
 //
 
 #include <types.h>
+#include <file.h>
+#include "filesystem.h"
+
 #define MAX_OPEN_FILES 8
 
 // MEMORY
 
 typedef struct FileDescriptorEntry {
-    Byte used;
+    Int type;
+    union {
+        INodeRef inode;     // file
+        Int io;             // stdin, stdout, stderr
+    };
+    Int readPtr;
+    Int writePtr;
 } FileDescriptorEntry;
 
 typedef struct {
     FileDescriptorEntry entries[MAX_OPEN_FILES];
-    Int count;
+    Byte bitmap[MAX_OPEN_FILES / 8];
 } FileDescriptorTable;
 
-// DISK
+FD file_open(String *path, Int flags);
 
+Int file_write(FD fd, const ByteBuffer buf, Int nbytes);
 
+Int file_read(FD fd, ByteBuffer buf, Int nbytes);
+
+Int file_stat(FD fd, struct file_stat *ref);
+
+Int file_seek(FD fd, Int offset, Int whence);
+
+void file_close(FD fd);
 
 FileDescriptorTable cache;
