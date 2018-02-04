@@ -8,10 +8,13 @@
 #include <network.h>
 #include <kprint.h>
 #include "debug.h"
+#include "filesystem.h"
 
 void run_tests();
 
 void print_info();
+
+void test_fs();
 
 void clear_monitor(Monitor *mon);
 
@@ -25,6 +28,7 @@ void main() {
 
     run_tests();
     print_info();
+    test_fs();
 }
 
 void assert(Int expected, Int value, const char *msg) {
@@ -156,7 +160,7 @@ void print_network_data(NetworkCard *net) {
     kdebug("\tInput buffer index: %d\n", net->inputBufferPtr);
     kdebug("\tOutput buffer index: %d\n", net->outputBufferPtr);
     kdebug("\tInput buffer: %x\n", (int) net->inputBuffer);
-    kdebug("\tOutput buffer: %x\n", (int)net->outputBuffer);
+    kdebug("\tOutput buffer: %x\n", (int) net->outputBuffer);
 }
 
 void test_network_pastebin(NetworkCard *net) {
@@ -211,6 +215,7 @@ void run_tests() {
     kdebug("All tests passed\n");
 }
 
+
 void print_info() {
     int count = 0, i;
     NetworkCard *net = NULL;
@@ -223,7 +228,7 @@ void print_info() {
         if (h) {
             kdebug("Found device at %x, of type: %d\n", (unsigned int) h, h->type);
             count++;
-            if(h->type == DEVICE_TYPE_NETWORK_CARD){
+            if (h->type == DEVICE_TYPE_NETWORK_CARD) {
                 net = (NetworkCard *) h;
             }
         }
@@ -241,6 +246,7 @@ void print_info() {
     kdebug("\nPrinting floppy disk data...\n");
     DiskDrive *drive = motherboard_get_floppy_drive();
     if (drive != NULL) {
+        fs_init(drive);
         print_disk_drive_data(drive);
     } else {
         kdebug("No floppy drive found\n");
@@ -249,11 +255,63 @@ void print_info() {
     kdebug("\nPrinting network card data...\n");
     if (net != NULL) {
         print_network_data(net);
-        test_network_pastebin(net);
+//        test_network_pastebin(net);
     } else {
         kdebug("No network card found\n");
     }
 
-
     kdebug("End\n");
+}
+
+void test_ls(INodeRef currentFolder) {
+    struct INode node;
+    struct DirectoryEntry entry;
+    int read;
+    for (int i = 0;; ++i) {
+        read = fs_read(currentFolder, (ByteBuffer) &entry, i * sizeof(struct DirectoryEntry),
+                       sizeof(struct DirectoryEntry));
+        if (!read) break;
+        kdebug("%s", entry.name);
+        fs_getINode(entry.inode, &node);
+        if (node.flags == FS_FLAG_DIRECTORY) {
+            kdebug("/");
+        }
+        kdebug("\n");
+    }
+}
+
+void test_fs() {
+    fs_format();
+    INodeRef folder = fs_getRoot();
+    INodeRef child1 = fs_create(folder, "file.txt", FS_FLAG_FILE);
+    INodeRef child2 = fs_create(folder, "no_file.txt", FS_FLAG_FILE);
+    INodeRef folder2 = fs_create(folder, "stuff", FS_FLAG_DIRECTORY);
+    INodeRef child3 = fs_create(folder2, "file3.txt", FS_FLAG_FILE);
+
+    char *text1 = "file1: hola mundo!!";
+    char *text2 = "file2: hello world!!";
+    fs_write(child1, text1, 0, strlen(text1) + 1);
+    fs_write(child2, text2, 0, strlen(text2) + 1);
+
+    kdebug("> ls\n");
+    test_ls(folder);
+//    kdebug("> cd stuff && ls\n");
+//    test_ls(folder2);
+
+    fs_delete(folder, child2);
+
+    kdebug("> ls\n");
+    test_ls(folder);
+
+//    char buffer[1024];
+//    struct INode node;
+//
+//    for (int j = 0; j < 20; j++) {
+//        memset(buffer, 30 + j, 1024);
+//        fs_write(child1, buffer, j * 1024, 1024);
+//    }
+//    for (int j = 0; j < 20; j++) {
+//        memset(buffer, 50 + j, 1024);
+//        fs_write(child3, buffer, j * 1024, 1024);
+//    }
 }

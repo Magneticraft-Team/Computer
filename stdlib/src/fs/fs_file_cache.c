@@ -3,7 +3,7 @@
 //
 
 #include "fs_utils.h"
-#include "../../include/string.h"
+#include "glib/string.h"
 #include "../../include/stdio.h"
 #include "../../util/static_list.h"
 

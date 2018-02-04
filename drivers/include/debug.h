@@ -10,6 +10,7 @@
 #ifdef DEBUG_ENV
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #define kdebug(...) printf(__VA_ARGS__)
 #else

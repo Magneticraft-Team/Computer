@@ -2,10 +2,10 @@
 // Created by cout970 on 2016-10-28.
 //
 
-#include "dependencies.h"
-#include "../include/stdlib.h"
-#include "../include/string.h"
-#include "../include/ctype.h"
+#include "../../../stdlib/src/dependencies.h"
+#include "../../../stdlib/include/stdlib.h"
+#include "glib/string.h"
+#include "glib/ctype.h"
 
 void *memchr(const void *str, int c, size_t n) {
     for (int i = 0; i < (int) n; i++) {

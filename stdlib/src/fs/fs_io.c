@@ -3,8 +3,8 @@
 //
 
 #include "fs_utils.h"
-#include "../../include/math.h"
-#include "../../include/string.h"
+#include "glib/math.h"
+#include "glib/string.h"
 #include "../../include/stdio.h"
 #include "filesystem.h"
 

@@ -2,8 +2,8 @@
 // Created by cout970 on 2016-11-01.
 //
 
-#include "dependencies.h"
-#include "../include/setjmp.h"
+#include "../../../stdlib/src/dependencies.h"
+#include "glib/setjmp.h"
 
 
 int setjmp(jmp_buf buf IGNORED) {

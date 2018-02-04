@@ -4,10 +4,10 @@
 
 #include "dependencies.h"
 #include "../include/stdio.h"
-#include "../include/stdarg.h"
-#include "../include/string.h"
+#include "glib/stdarg.h"
+#include "glib/string.h"
 #include "../include/stdlib.h"
-#include "../include/ctype.h"
+#include "glib/ctype.h"
 #include "../fs/filesystem.h"
 
 #define SPACE ((char)32)

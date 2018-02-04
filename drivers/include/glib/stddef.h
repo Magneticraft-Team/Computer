@@ -17,6 +17,10 @@ typedef int ptrdiff_t;
 typedef unsigned int size_t;
 #endif
 
+#ifndef wchar_t
+typedef unsigned short int wchar_t;
+#endif
+
 #ifndef int32_t
 typedef int int32_t;
 #endif

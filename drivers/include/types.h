@@ -10,6 +10,7 @@
 #endif
 
 #define IGNORED __attribute__((unused))
+#define PACKED __attribute__((packed))
 
 #define FALSE 0
 #define TRUE (!FALSE)
