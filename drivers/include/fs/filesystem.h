@@ -1,12 +1,33 @@
 //
 // Created by cout970 on 27/01/18.
 //
+// This ia basic implementation of a filesystem to manage the space in a disk efficiently
+// This implementations is inspired by EXT2
+// The bases of the filesystem are:
+// - Every sector in the disk is used as a block, so blocks and sectors have the same size
+//
+// - The first block contains a SuperBlock (struct SuperBlock) that stores disk info, like the magic number used
+//   to detect if the disk has any filesystem, or the amount of blocks in the disk
+//
+// - The SuperBlock contains a collection of BlockGroups (struct BlockGroup) those define different sections of the
+//   disk, since the minecraft emulator only has 256 sectors and each BlockGroup has a max 256 blocks,
+//   the implementations only uses the first block, this may change in the future
+//
+// - Every BlockGroup has up to 256 blocks to handle, it has a bitmap to know which blocks are used, and a ref to
+//   a block with the inodes of in the group
+//
+// - An inode table (struct INodeTable) stores a list of inodes and a ref to the next table if this table is full
+//
+// - An inode (struct INode) is a file in the system, it stores all info about the file, for example, the flags
+//   indicates if is a normal file or a directory. The inode stores the references to the 9 first blocks used to
+//   store the content of the file, and any extra blocks references are stored in a separated block referenced
+//   by the field indirectBlock
+//
+// - Directories are normal files with a list of DirectoryEntry, Each entry has a file name and a inode ref.
+//
 
 #ifndef COMPUTER_FILESYSTEM_H
 #define COMPUTER_FILESYSTEM_H
-
-
-// inspired in EXT2
 
 #include <types.h>
 #include <disk_drive.h>
@@ -64,11 +85,13 @@ struct PACKED INodeTable {
     struct INode inodes[FS_INODES_PER_TABLE];// The inodes in this part of the table
 };
 
+// Directory content
 struct DirectoryEntry {
     char name[FS_MAX_FILE_NAME_SIZE];
     INodeRef inode;
 };
 
+// Utility struct to list entries of a directory
 struct DirectoryIterator {
     struct DirectoryEntry entry;
     int index;

@@ -4,7 +4,7 @@
 
 #include <types.h>
 #include <file.h>
-#include "filesystem.h"
+#include "fs/filesystem.h"
 
 #define MAX_OPEN_FILES 8
 
@@ -20,21 +20,8 @@ typedef struct FileDescriptorEntry {
     Int writePtr;
 } FileDescriptorEntry;
 
-typedef struct {
+static struct FileDescriptorTable{
     FileDescriptorEntry entries[MAX_OPEN_FILES];
     Byte bitmap[MAX_OPEN_FILES / 8];
-} FileDescriptorTable;
+} Table;
 
-FD file_open(String *path, Int flags);
-
-Int file_write(FD fd, const ByteBuffer buf, Int nbytes);
-
-Int file_read(FD fd, ByteBuffer buf, Int nbytes);
-
-Int file_stat(FD fd, struct file_stat *ref);
-
-Int file_seek(FD fd, Int offset, Int whence);
-
-void file_close(FD fd);
-
-FileDescriptorTable cache;

@@ -1,6 +1,8 @@
 //
 // Created by cout970 on 2017-07-10.
 //
+// Provides basic types for headers
+// Remember, you are not forced to use them, feel free to define them as i8, i16... or int8_t, int16_t... for you code
 
 #ifndef DRIVER_TYPES_H
 #define DRIVER_TYPES_H

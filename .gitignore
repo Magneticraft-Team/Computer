@@ -1,5 +1,6 @@
 # old projects
 old/
+.ignore
 
 # Clion & Intellij
 CMakeLists.txt

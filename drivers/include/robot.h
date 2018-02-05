@@ -46,6 +46,7 @@ void mining_robot_signal(MiningRobot *robot, Byte signal);
 Int mining_robot_run_task(MiningRobot *robot, Int task);
 
 Int mining_robot_get_battery_capacity(MiningRobot *robot);
+
 Int mining_robot_get_battery_energy(MiningRobot *robot);
 
 #endif //DRIVER_ROBOT_H
