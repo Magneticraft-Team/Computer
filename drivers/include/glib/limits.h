@@ -15,17 +15,12 @@
 #define SHRT_MIN	-32768
 #define SHRT_MAX	+32767
 #define USHRT_MAX	65535
-#define INT_MIN	-2147483648
-#define INT_MAX	+2147483647
+#define INT_MIN	    -2147483648
+#define INT_MAX	    +2147483647
 #define UINT_MAX	4294967295
-//there are no longs, because the cpu uses 32 bits
+//there are no longs, because the cpu is 32bit, so they have the same size as int
 #define LONG_MIN	-2147483648
 #define LONG_MAX	+2147483647
 #define ULONG_MAX	4294967295
-
-//#define LONG_MIN	-9223372036854775808	Defines the minimum value for a long int.
-//#define LONG_MAX	+9223372036854775807	Defines the maximum value for a long int.
-//#define ULONG_MAX	18446744073709551615	Defines the maximum value for an unsigned long int.
-
 
 #endif //COMPUTER_LIMITS_H

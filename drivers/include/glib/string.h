@@ -1,6 +1,8 @@
 //
 // Created by cout970 on 2016-10-21.
 //
+// Several memory/string utilities
+//
 
 #ifndef COMPUTER_STRING_H
 #define COMPUTER_STRING_H
@@ -52,7 +54,5 @@ char *strtok(char *str, const char *delim);
 char *strdup(const char * str);
 
 const char *strtrim(const char *string) ;
-
-//size_t strxfrm(char *dest, const char *src, size_t n);
 
 #endif //COMPUTER_STRING_H

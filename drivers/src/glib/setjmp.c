@@ -2,9 +2,8 @@
 // Created by cout970 on 2016-11-01.
 //
 
-#include "../../../stdlib/src/dependencies.h"
-#include "glib/setjmp.h"
-
+#include <types.h>
+#include <glib/setjmp.h>
 
 int setjmp(jmp_buf buf IGNORED) {
     asm volatile(""

@@ -20,7 +20,7 @@ void main() {
     floppyDrive = motherboard_get_floppy_drive();
 
 #ifdef USE_DEBUG_LOG
-    motherboard_set_debug_log_type(motherboard, MOTHERBOARD_LOG_TYPE_CHAR);
+    motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);
 #else
     clear_screen();
 #endif

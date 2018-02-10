@@ -7,6 +7,8 @@
 #ifndef DRIVER_BASE_H
 #define DRIVER_BASE_H
 
+#define USE_DEBUG_LOG
+
 // DEBUG_ENV: This is defined if the program will run in a debug environment, this is opposed to COMPUTER_ENV,
 // this uses a implementation of the api that runs on normal PCs and can be debugged.
 #ifndef DEBUG_ENV

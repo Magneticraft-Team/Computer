@@ -55,7 +55,7 @@ struct PACKED BlockGroup {
 
 // 916 bytes maybe
 struct PACKED SuperBlock {
-    Int magicNumber;        // mark used to detect the disk format
+    UInt magicNumber;       // mark used to detect the disk format
     Int deviceId;           // used to differentiate disks
     Int deviceSize;         // max bytes in the device
 

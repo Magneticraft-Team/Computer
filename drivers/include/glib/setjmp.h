@@ -1,6 +1,7 @@
 //
 // Created by cout970 on 2016-11-01.
 //
+// Allows to jump between pieces of code, can be used to implement a primitive try/catch
 
 #ifndef COMPUTER_SETJMP_H
 #define COMPUTER_SETJMP_H
@@ -19,7 +20,7 @@ typedef int jmp_buf[31];
 int setjmp(jmp_buf buf);
 
 /**
- * Return to the last setjmp call and act as if setjmp() had returned
+ * Returns to the last setjmp call and act as if setjmp() had returned
  * 'value' (which better be non-zero!).
  */
 void longjmp(jmp_buf buf, int value);

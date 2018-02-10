@@ -3,7 +3,7 @@
 //
 
 #include <motherboard.h>
-#include "fs/filesystem.h"
+#include <fs/filesystem.h>
 #include <string.h>
 #include <debug.h>
 #include <glib/math.h>
@@ -75,18 +75,16 @@ static void saveSector(BlockRef sector) {
 }
 
 #else
-static void strcpy(String *dst, const String *src) {
-    for (; *src; dst++, src++) *dst = *src;
-}
-
 static void loadSector(BlockRef sector) {
     disk_drive_set_current_sector(drive, sector);
     disk_drive_signal(drive, DISK_DRIVE_SIGNAL_READ);
+    motherboard_sleep((Byte) disk_drive_get_access_time(drive));
 }
 
 static  void saveSector(BlockRef sector) {
     disk_drive_set_current_sector(drive, sector);
     disk_drive_signal(drive, DISK_DRIVE_SIGNAL_WRITE);
+    motherboard_sleep((Byte) disk_drive_get_access_time(drive));
 }
 #endif
 
@@ -152,11 +150,11 @@ void fs_format() {
         struct BlockGroup *group = &block->blockGroupList[0];
         memset(group->blockBitmap, 0, FS_BLOCK_GROUP_BITMAP_BYTES);
 
-
         bitmap_set(group->blockBitmap, 0, TRUE);
+
         group->inodeTable = 1;
         group->blocksOffset = 3;
-        group->numberOfBlocks = sectorCount - 2;
+        group->numberOfBlocks = MIN(sectorCount - 2, 128);
     }
     saveSector(0); // first block
 
@@ -185,7 +183,6 @@ void fs_format() {
         node->modificationTime = time;
         node->blocksInUse = 1;
         node->blocks[0] = 2; // third block
-
     }
     saveSector(1); // second block
 
@@ -220,6 +217,7 @@ Int fs_getFreeBlocks() {
         for (int j = 0; j < group->numberOfBlocks; ++j) {
             if (!bitmap_get(group->blockBitmap, j)) count++;
         }
+        motherboard_signal(MOTHERBOARD_SIGNAL_HALT);
     }
 
     return count;
@@ -230,7 +228,9 @@ Int fs_getDevice() {
     if (!disk_drive_has_disk(drive)) return -1;
     loadSector(0);
     struct SuperBlock *block = (struct SuperBlock *) blockBuffer;
-    if (block->magicNumber == FS_MAGIC_NUMBER) return -1;
+    if (block->magicNumber != FS_MAGIC_NUMBER)
+        return -1;
+
     return block->deviceId;
 }
 
@@ -376,7 +376,7 @@ Int fs_delete(INodeRef parent, INodeRef file) {
         loadSector(inodeTableRef);
         struct INodeTable *table = (struct INodeTable *) blockBuffer;
         inodeTableRef = table->nextTable;
-        if(inodeTableRef == FS_NULL_BLOCK_REF)
+        if (inodeTableRef == FS_NULL_BLOCK_REF)
             return -1;
     }
 
@@ -473,7 +473,7 @@ Boolean fs_getINode(INodeRef inode, struct INode *dst) {
         loadSector(inodeTableRef);
         struct INodeTable *table = (struct INodeTable *) blockBuffer;
         inodeTableRef = table->nextTable;
-        if(inodeTableRef == FS_NULL_BLOCK_REF)
+        if (inodeTableRef == FS_NULL_BLOCK_REF)
             return FALSE;
     }
 
@@ -511,7 +511,7 @@ Boolean fs_setINode(INodeRef inode, struct INode *src) {
         loadSector(inodeTableRef);
         struct INodeTable *table = (struct INodeTable *) blockBuffer;
         inodeTableRef = table->nextTable;
-        if(inodeTableRef == FS_NULL_BLOCK_REF)
+        if (inodeTableRef == FS_NULL_BLOCK_REF)
             return FALSE;
     }
 
@@ -584,7 +584,7 @@ Boolean fs_truncate(INodeRef inode, Int size) {
 
                     int pointerArrayIndex = i - FS_NUM_DIRECT_BLOCKS;
 
-                    if (pointerArrayIndex >= DISK_DRIVE_BUFFER_SIZE / sizeof(BlockRef)) {
+                    if (pointerArrayIndex >= (int) (DISK_DRIVE_BUFFER_SIZE / sizeof(BlockRef))) {
                         // Indirect block overflow, reached max file size
                         fs_setINode(inode, &node);
                         return FALSE;

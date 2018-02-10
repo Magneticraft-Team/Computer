@@ -2,10 +2,9 @@
 // Created by cout970 on 2016-10-28.
 //
 
-#include "../../../stdlib/src/dependencies.h"
-#include "../../../stdlib/include/stdlib.h"
-#include "glib/string.h"
-#include "glib/ctype.h"
+#include <glib/string.h>
+#include <glib/ctype.h>
+#include <types.h>
 
 void *memchr(const void *str, int c, size_t n) {
     for (int i = 0; i < (int) n; i++) {
@@ -270,12 +269,12 @@ char *strtok(char *str, const char *delim) {
     return (char *) NULL;
 }
 
-char *strdup(const char *s) {
-    char *d = malloc(strlen(s) + 1);
-    if (d == NULL) return NULL;
-    strcpy(d, s);
-    return d;
-}
+//char *strdup(const char *s) {
+//    char *d = malloc(strlen(s) + 1);
+//    if (d == NULL) return NULL;
+//    strcpy(d, s);
+//    return d;
+//}
 
 
 const char *strtrim(const char *string) {

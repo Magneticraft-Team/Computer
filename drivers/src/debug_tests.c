@@ -2,40 +2,13 @@
 // Created by cout970 on 2017-07-10.
 //
 
-//#define USE_DEBUG_LOG
-
 #include <motherboard.h>
 #include <network.h>
+#include <string.h>
 #include "debug.h"
 #include "fs/filesystem.h"
 
-void run_tests();
-
-void print_info();
-
-void test_fs();
-
-void clear_monitor(Monitor *mon);
-
-void test_network_pastebin(NetworkCard *, INodeRef);
-
 static NetworkCard *net = NULL;
-
-void main() {
-
-#ifdef USE_DEBUG_LOG
-    motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);
-#else
-    clear_monitor(motherboard_get_monitor());
-#endif
-
-    run_tests();
-    print_info();
-    test_fs();
-    if (net) {
-        test_network_pastebin(net, 2);
-    }
-}
 
 void assert(Int expected, Int value, const char *msg) {
     if (expected != value) {
@@ -44,7 +17,7 @@ void assert(Int expected, Int value, const char *msg) {
     }
 }
 
-void test_motherboard() {
+void test_motherboard_api() {
     struct motherboard_header *mb = 0x0;
     assert(0x00, (int) &mb->online, "online");
     assert(0x01, (int) &mb->signal, "signal");
@@ -63,7 +36,7 @@ void test_motherboard() {
     assert(0x24, (int) &mb->devices, "devices");
 }
 
-void text_monitor() {
+void text_monitor_api() {
     struct monitor_header *mb = 0x0;
     assert(0x04, (int) &mb->keyBufferPtr, "keyBufferPtr");
     assert(0x05, (int) &mb->keyBufferSize, "keyBufferSize");
@@ -80,7 +53,7 @@ void text_monitor() {
     assert(0x5c, (int) &mb->buffer, "buffer");
 }
 
-void test_disk_drive() {
+void test_disk_drive_api() {
     struct disk_drive_header *mb = 0x0;
     assert(0x00, (int) &mb->header, "header");
     assert(0x04, (int) &mb->signal, "signal");
@@ -92,7 +65,7 @@ void test_disk_drive() {
     assert(0x10, (int) &mb->buffer, "buffer");
 }
 
-void test_network() {
+void test_network_api() {
     struct network_card_header *mb = 0x0;
     assert(0x000, (int) &mb->header, "header");
     assert(0x004, (int) &mb->internetAllowed, "internetAllowed");
@@ -130,7 +103,6 @@ void clear_monitor(Monitor *mon) {
 void print_motherboard_data() {
     Motherboard *mb = motherboard_get_computer_motherboard();
 
-    kdebug("Motherboard state:\n");
     kdebug("\tOnline: %d\n", mb->online);
     kdebug("\tMonitorId: %x\n", (int) mb->monitor);
     kdebug("\tFloppyId: %x\n", (int) mb->floppy);
@@ -169,65 +141,23 @@ void print_network_data(NetworkCard *net) {
     kdebug("\tOutput buffer: %x\n", (int) net->outputBuffer);
 }
 
-void test_network_pastebin(NetworkCard *net, INodeRef file) {
-    int i;
-
-    kdebug("Connecting to pastebin.com...\n");
-    network_set_target_ip(net, "pastebin.com");
-    network_set_target_port(net, 443);
-    network_set_input_pointer(net, 0);
-    network_set_output_pointer(net, 0);
-    network_signal(net, NETWORK_SIGNAL_OPEN_SSL_TCP_CONNECTION);
-
-    const char *get = "GET /raw/pJwsc2XP HTTP/1.1\r\n"
-            "Host: pastebin.com\r\n"
-            "Connection: close\r\n"
-            "\r\n";
-
-    Byte volatile *ptr = network_get_output_buffer(net);
-
-    for (i = 0; get[i]; i++) {
-        ptr[i] = get[i];
-    }
-    network_set_output_pointer(net, i);
-
-    // Wait for data to be send
-    while (network_get_output_pointer(net) && network_is_connection_open(net)) {
-        motherboard_sleep(1);
-    }
-
-    int offset = 0;
-    // wait for response to arrive and print it
-    while (network_is_connection_open(net)) {
-
-        while (!network_get_input_pointer(net) && network_is_connection_open(net)) {
-            motherboard_sleep(1);
-        }
-        offset += fs_write(file, network_get_input_buffer(net), offset, network_get_input_pointer(net));
-        network_set_input_pointer(net, 0);
-    }
-
-    network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
-    kdebug("Connection closed\n");
-    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
-           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
+void run_api_tests() {
+    kdebug("Starting api tests\n");
+    test_motherboard_api();
+    text_monitor_api();
+    test_disk_drive_api();
+    test_network_api();
+    kdebug("All tests passed\n\n");
 }
 
-void run_tests() {
-    kdebug("Starting tests\n");
-    test_motherboard();
-    text_monitor();
-    test_disk_drive();
-    test_network();
-    kdebug("All tests passed\n");
-}
-
-void print_info() {
+void print_hardware_info() {
     int count = 0, i;
 
+    kdebug("Printing motherboard data...\n");
     print_motherboard_data();
+    kdebug("\n");
 
-    kdebug("Scanning devices... \n");
+    kdebug("Scanning attached devices... \n");
     for (i = 0; i < 16; i++) {
         const struct device_header *h = motherboard_get_devices()[i];
         if (h) {
@@ -238,34 +168,37 @@ void print_info() {
             }
         }
     }
-    kdebug("All devices scanned, count: %d \n", count);
+    kdebug("All devices scanned, count: %d \n\n", count);
 
-    kdebug("\nPrinting monitor data...\n");
+    kdebug("Printing monitor data...\n");
     Monitor *mon = motherboard_get_monitor();
     if (mon != NULL) {
         print_monitor_data(mon);
     } else {
         kdebug("No monitor found\n");
     }
+    kdebug("\n");
 
-    kdebug("\nPrinting floppy disk data...\n");
+    kdebug("Printing floppy disk data...\n");
     DiskDrive *drive = motherboard_get_floppy_drive();
     if (drive != NULL) {
-        fs_init(drive);
         print_disk_drive_data(drive);
+        kdebug("Filesystem initialization, %x\n", (UInt) drive);
+        fs_init(drive);
+        kdebug("done\n");
     } else {
         kdebug("No floppy drive found\n");
     }
+    kdebug("\n");
 
-    kdebug("\nPrinting network card data...\n");
+    kdebug("Printing network card data...\n");
     if (net != NULL) {
         print_network_data(net);
-//        test_network_pastebin(net);
     } else {
         kdebug("No network card found\n");
     }
 
-    kdebug("End\n");
+    kdebug("\n");
 }
 
 void test_ls(INodeRef currentFolder) {
@@ -287,72 +220,142 @@ void test_ls(INodeRef currentFolder) {
     }
 }
 
-void test_fs() {
+void test_filesystem() {
+
+    kdebug("Please change disk\n");
+    motherboard_sleep(20);
+    motherboard_sleep(20);
+    kdebug("Loading disk...\n");
+
+    int totalBlocks = disk_drive_get_num_sectors(motherboard_get_floppy_drive());
     kdebug("Create fs\n");
     fs_format();
+
+    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(), totalBlocks);
+
+    INodeRef root = fs_getRoot();
+    INodeRef child1 = fs_create(root, "child1.txt", FS_FLAG_FILE);
+    INodeRef child2 = fs_create(root, "child2.txt", FS_FLAG_FILE);
+
+    INodeRef folder2 = fs_create(root, "folder2", FS_FLAG_DIRECTORY);
+    INodeRef child3 = fs_create(folder2, "child3.txt", FS_FLAG_FILE);
+
+    kdebug("Truncate child3, to size: %d\n", 1024 * 10);
+    fs_truncate(child3, 1024 * 10);
+    kdebug("Truncate child3, to size: 0\n");
+    fs_truncate(child3, 0);
+
+    kdebug("Test file write fs\n");
+    char *text1 = "child1: hola mundo!!";
+    char *text2 = "child2: hello world!!";
+    fs_write(child1, text1, 0, strlen(text1) + 1);
+    fs_write(child2, text2, 0, strlen(text2) + 1);
+    kdebug("\n");
+
+    kdebug("> ls\n");
+    test_ls(root);
+    kdebug("\n");
+
+
+    kdebug("Deleting child2\n");
+    fs_delete(root, child2);
+    kdebug("Deleting child1\n");
+    fs_delete(root, child1);
+    kdebug("Deleting folder2\n");
+    fs_delete(root, folder2);
+
+    kdebug("> ls\n");
+    test_ls(root);
+    kdebug("\n");
+
+    kdebug("Test fill disk\n");
+
+    char buffer[1024];
+    char fileName[] = "a";
+    INodeRef newFile;
+
+    for (int i = 'a'; i <= 'z'; ++i) {
+
+        memset(buffer, (char) i, 1024);
+        fileName[0] = (char) i;
+        newFile = fs_create(root, fileName, FS_FLAG_FILE);
+        kdebug("New file %d, at '%s'\n", newFile, fileName);
+        fs_write(newFile, buffer, 0, 1024);
+    }
+
+    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(), totalBlocks);
+}
+
+void test_network_pastebin(NetworkCard *net, INodeRef file) {
+
+    // Socket layer
+    kdebug("Connecting to pastebin.com...\n");
+    network_set_target_ip(net, "pastebin.com");
+    network_set_target_port(net, 443);
+    network_set_input_pointer(net, 0);
+    network_set_output_pointer(net, 0);
+    network_signal(net, NETWORK_SIGNAL_OPEN_SSL_TCP_CONNECTION);
+
+    if (!network_is_connection_open(net)) {
+        int code = network_get_connection_error(net);
+        kdebug("Error connecting to pastebin.com, error code: %d\n", code);
+        return;
+    } else {
+        kdebug("Connected to pastebin.com\n");
+    }
+
+    // HTTP layer
+    const char *get = "GET /raw/pJwsc2XP HTTP/1.1\r\n"
+            "Host: pastebin.com\r\n"
+            "Connection: close\r\n"
+            "\r\n";
+
+    // Send
+    memcpy((void *) network_get_output_buffer(net), get, strlen(get));
+    network_set_output_pointer(net, strlen(get));
+
+    // Wait for data to be send
+    while (network_get_output_pointer(net) && network_is_connection_open(net)) {
+        motherboard_sleep(1);
+    }
+
+    int offset = 0;
+    // While is connected keep reading
+    while (network_is_connection_open(net)) {
+
+        // Wait for response
+        while (!network_get_input_pointer(net) && network_is_connection_open(net)) {
+            motherboard_sleep(1);
+        }
+        // write result to a file
+        offset += fs_write(file, network_get_input_buffer(net), offset, network_get_input_pointer(net));
+        network_set_input_pointer(net, 0);
+    }
+
+    network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
+    kdebug("Connection closed\n");
     kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
            disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
-    INodeRef folder = fs_getRoot();
-    INodeRef child1 = fs_create(folder, "file.txt", FS_FLAG_FILE);
-//    INodeRef child2 = fs_create(folder, "no_file.txt", FS_FLAG_FILE);
-//    INodeRef folder2 = fs_create(folder, "stuff", FS_FLAG_DIRECTORY);
-//    INodeRef child3 = fs_create(folder2, "file3.txt", FS_FLAG_FILE);
-//
-//    kdebug("Truncate file3, to size: %d\n", 1024 * 10);
-//    fs_truncate(child3, 1024 * 10);
-//    kdebug("Truncate file3, to size: 0\n");
-//    fs_truncate(child3, 0);
-//
-//    kdebug("Test file write fs\n");
-//    char *text1 = "file1: hola mundo!!";
-//    char *text2 = "file2: hello world!!";
-//    fs_write(child1, text1, 0, strlen(text1) + 1);
-//    fs_write(child2, text2, 0, strlen(text2) + 1);
-//    kdebug("\n");
-//
-//    kdebug("> ls\n");
-//    test_ls(folder);
-//
-//    kdebug("Delete files\n");
-//
-//    fs_delete(folder, child2);
-//    fs_delete(folder, child1);
-//    fs_delete(folder, folder2);
-//
-//    kdebug("> ls\n");
-//    test_ls(folder);
-//
-//    kdebug("Test fill disk\n");
-//
-//    char buffer[1024];
-//    char fileName[] = "a";
-//    INodeRef newFile;
-//
-//    for (int i = 'a'; i <= 'z'; ++i) {
-//
-//        memset(buffer, (char) i, 1024);
-//        fileName[0] = (char) i;
-//        newFile = fs_create(folder, fileName, FS_FLAG_FILE);
-//        kdebug("New file %d, at '%s'\n", newFile, fileName);
-//        fs_write(newFile, buffer, 0, 1024);
-//    }
-//
-//    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
-//           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
-//
-//    kdebug("> ls\n");
-//    test_ls(folder);
-//    BlockRef child = fs_findFile(folder, "z");
-//    fs_delete(folder, child);
-//
-//    child = fs_findFile(folder, "t");
-//    fs_delete(folder, child);
-//
-//    kdebug("> ls\n");
-//    test_ls(folder);
+}
 
-    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(),
-           disk_drive_get_num_sectors(motherboard_get_floppy_drive()));
+void setup() {
+#ifdef USE_DEBUG_LOG
+    motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);
+#else
+    clear_monitor(motherboard_get_monitor());
+#endif
+}
 
-    kdebug("End\n");
+void main() {
+
+    setup();
+    run_api_tests();
+
+    print_hardware_info();
+    test_filesystem();
+
+    if (net) {
+        INodeRef file = fs_findFile(fs_getRoot(), "a");
+        test_network_pastebin(net, file);
+    }
 }

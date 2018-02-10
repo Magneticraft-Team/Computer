@@ -3,21 +3,8 @@
 //
 
 #include <motherboard.h>
+#include <stdarg.h>
 #include "kprint.h"
-
-// List of variable arguments
-#define va_list struct { int* _ptr; int _count; }
-
-// Initialization of the list, using the last argument of the function
-#define va_start(_list, arg) (_list)._ptr = (int*)(&ptr + 1); (_list)._count = 0
-
-// Retrieves a element from the list
-#define va_arg(_list, arg) ((arg)*((_list)._ptr + (_list)._count++))
-
-// Removes the list, not need in this implementation
-#define va_end(_list) ((void)0)
-
-#define va_copy(dst, src) dst._ptr = (src)._ptr; (dst)._count = (src)._count
 
 #define SPACE ((char)32)
 
@@ -27,14 +14,11 @@
 void kputchar(char code) {
     putchar(code);
 }
-#elif USE_DEBUG_LOG
-static Motherboard* motherboard = NULL;
 
-void kputchar(int code) {
-    if(!motherboard){
-        motherboard = motherboard_get_computer_motherboard();
-    }
-    motherboard_debug_print_byte(motherboard, code);
+#else
+#ifdef USE_DEBUG_LOG
+void kputchar(char code) {
+    motherboard_debug_print_byte((Byte) code);
 }
 #else
 static Monitor *mon = NULL;
@@ -98,6 +82,7 @@ void kputchar(char code) {
     }
 }
 
+#endif
 #endif
 
 int kprintn(int num, int base) {
