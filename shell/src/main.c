@@ -90,7 +90,7 @@ void main() {
         if (*cmd == '\0') continue;
 
         for (int i = 0; i < commandCount; ++i) {
-            if (strmatch(commands[i].name, cmd)) {
+            if (strcmp(commands[i].name, cmd) == 0) {
                 found = 1;
                 if (commands[i].argCount == args) {
                     switch (args) {

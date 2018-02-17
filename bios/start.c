@@ -6,30 +6,30 @@
 
 #include <motherboard.h>
 #include <debug.h>
+#include <fs/filesystem.h>
+#include <string.h>
+#include <glib/math.h>
 
 static Monitor *monitor;
 static DiskDrive *floppyDrive;
 
-void clear_screen();
-
 int readDisk();
+
+int readFile(INodeRef file);
+
+int loadOs();
 
 void main() {
 
     monitor = motherboard_get_monitor();
     floppyDrive = motherboard_get_floppy_drive();
 
-#ifdef USE_DEBUG_LOG
     motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);
-#else
-    clear_screen();
-#endif
+    monitor_clear(monitor);
 
     if (disk_drive_has_disk(floppyDrive)) {
         kdebug("Loading...\n");
-        int loaded = readDisk();
-        kdebug("Loaded %d sectors\n", loaded);
-        if (loaded > 0) {
+        if (loadOs()) {
             kdebug("Jumping to boot...\n");
             asm volatile("jal 0");
         }
@@ -39,19 +39,32 @@ void main() {
     kdebug("Halting cpu");
 }
 
-void *memcpy(void *dest, const void *src, int n) {
-    for (int i = 0; i < n; i++) {
-        ((char *) dest)[i] = ((char *) src)[i];
-    }
-    return dest;
-}
-
 int isEmpty(char volatile *buff, int n) {
     unsigned char sum = 0;
     for (int i = 0; i < n; ++i) {
         sum |= buff[i];
     }
     return sum == 0;
+}
+
+int loadOs() {
+    int loaded;
+    fs_init(floppyDrive);
+
+    if (fs_getDevice() != -1) {
+        INodeRef boot = fs_findFile(fs_getRoot(), "boot.bin");
+        if (boot != FS_NULL_INODE_REF) {
+            kdebug("Loading from boot.bin\n");
+            loaded = readFile(boot);
+            kdebug("Loaded %d sectors\n", loaded);
+            return loaded;
+        }
+    }
+
+    kdebug("Loading from disk...\n");
+    loaded = readDisk();
+    kdebug("Loaded %d sectors\n", loaded);
+    return loaded;
 }
 
 int readDisk() {
@@ -83,23 +96,17 @@ int readDisk() {
     return i;
 }
 
+int readFile(INodeRef file) {
+    char *ptr = 0x0;
+    struct INode node;
+    if (!fs_getINode(file, &node)) return 0;
 
-void clear_screen() {
-    int lines = monitor_get_num_lines(monitor);
-    int columns = monitor_get_num_columns(monitor);
-    int i;
+    int sectors = CEIL_DIV(node.size, DISK_DRIVE_BUFFER_SIZE);
+    if (sectors > 36) sectors = 36;
 
-    for (i = 0; i < columns; i++) {
-        monitor_get_line_buffer(monitor)[i] = 0x20;
+    for (int i = 0; i < sectors; ++i) {
+        fs_read(file, ptr + i * DISK_DRIVE_BUFFER_SIZE, i * DISK_DRIVE_BUFFER_SIZE, DISK_DRIVE_BUFFER_SIZE);
     }
 
-    for (i = 0; i < lines; i++) {
-        monitor_set_selected_line(monitor, i);
-        monitor_signal(monitor, MONITOR_SIGNAL_WRITE);
-    }
-
-    monitor_set_selected_line(monitor, 0);
-    monitor_set_cursor_pos_y(monitor, 0);
-    monitor_set_cursor_pos_x(monitor, 0);
+    return sectors;
 }
-

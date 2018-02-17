@@ -160,7 +160,7 @@ void f_write(ArgType name) {
     while (1) {
         kdebug(">>");
         readInput(line, 78);
-        if (strmatch(line, "EOF\n")) return;
+        if (strcmp(line, "EOF\n") == 0) return;
         fs_write(file, line, index, strlen(line));
         index += strlen(line);
     }

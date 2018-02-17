@@ -1,0 +1,77 @@
+name: (done)
+    syscall
+    noop
+
+name $r1, $r2, $r3: (done)
+    add
+    addu
+    and
+    or
+    sllv
+    slt
+    sltu
+    srlv
+    sub
+    subu
+    xor
+
+name $t, $s, imm: (done)
+    addi
+    addiu
+    andi
+    ori
+    slti
+    sltiu
+    xori
+
+name $s, $t, imm: (done)
+    beq
+    bne
+
+
+name $d, $t, imm: (done)
+    srl
+    sll
+    sra
+
+
+name $s, imm: (done)
+    bgez
+    bgezal
+    bgtz
+    blez
+    bltz
+    bltzal
+    lui
+
+name $s, $t: (done)
+    div
+    divu
+    mult
+    multu
+
+
+name name1: (done)
+    jal
+    j
+
+name $s: (done)
+    jr
+    mfhi
+    mflo
+
+name $t, offset($s): (done)
+    lb
+    lw
+    sb
+    sw
+
+examples
+lw     $t0, 4($gp)       # fetch N
+mult   $t0, $t0          # N*N
+lw     $t1, 4($gp)       # fetch N
+ori    $t2, $zero, 3     # 3
+mult   $t1, $t2          # 3*N
+add    $t2, $t0, $t1     # N*N + 3*N
+sw     $t2, 0($gp)       # i = ...
+
