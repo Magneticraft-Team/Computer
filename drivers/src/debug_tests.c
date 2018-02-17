@@ -84,22 +84,6 @@ void test_network_api() {
     assert(0x474, (int) &mb->outputBuffer, "outputBuffer");
 }
 
-void clear_monitor(Monitor *mon) {
-    Int i;
-    Int lines = monitor_get_num_lines(mon);
-    Int columns = monitor_get_num_columns(mon);
-
-    for (i = 0; i < columns; i++) {
-        monitor_get_line_buffer(mon)[i] = 0x20;
-    }
-
-    for (i = 0; i < lines; i++) {
-        monitor_set_selected_line(mon, i);
-        monitor_signal(mon, MONITOR_SIGNAL_WRITE);
-    }
-    monitor_set_selected_line(mon, 0);
-}
-
 void print_motherboard_data() {
     Motherboard *mb = motherboard_get_computer_motherboard();
 
@@ -281,9 +265,11 @@ void test_filesystem() {
         newFile = fs_create(root, fileName, FS_FLAG_FILE);
         kdebug("New file %d, at '%s'\n", newFile, fileName);
         fs_write(newFile, buffer, 0, 1024);
+        kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(), totalBlocks);
+        kdebug("> ls\n");
+        test_ls(root);
+        kdebug("\n");
     }
-
-    kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(), totalBlocks);
 }
 
 void test_network_pastebin(NetworkCard *net, INodeRef file) {
@@ -292,8 +278,6 @@ void test_network_pastebin(NetworkCard *net, INodeRef file) {
     kdebug("Connecting to pastebin.com...\n");
     network_set_target_ip(net, "pastebin.com");
     network_set_target_port(net, 443);
-    network_set_input_pointer(net, 0);
-    network_set_output_pointer(net, 0);
     network_signal(net, NETWORK_SIGNAL_OPEN_SSL_TCP_CONNECTION);
 
     if (!network_is_connection_open(net)) {
@@ -311,25 +295,19 @@ void test_network_pastebin(NetworkCard *net, INodeRef file) {
             "\r\n";
 
     // Send
-    memcpy((void *) network_get_output_buffer(net), get, strlen(get));
-    network_set_output_pointer(net, strlen(get));
+    network_send(net, (ByteBuffer) get, strlen(get));
 
-    // Wait for data to be send
-    while (network_get_output_pointer(net) && network_is_connection_open(net)) {
-        motherboard_sleep(1);
-    }
+    Byte buffer[128];
+    Int offset = 0;
+    Int read;
 
-    int offset = 0;
-    // While is connected keep reading
     while (network_is_connection_open(net)) {
-
-        // Wait for response
-        while (!network_get_input_pointer(net) && network_is_connection_open(net)) {
+        read = network_receive(net, buffer, 80);
+        if (read == 0) {
             motherboard_sleep(1);
+            continue;
         }
-        // write result to a file
-        offset += fs_write(file, network_get_input_buffer(net), offset, network_get_input_pointer(net));
-        network_set_input_pointer(net, 0);
+        offset += fs_write(file, buffer, offset, read);
     }
 
     network_signal(net, NETWORK_SIGNAL_CLOSE_TCP_CONNECTION);
@@ -339,11 +317,8 @@ void test_network_pastebin(NetworkCard *net, INodeRef file) {
 }
 
 void setup() {
-#ifdef USE_DEBUG_LOG
     motherboard_set_debug_log_type(MOTHERBOARD_LOG_TYPE_CHAR);
-#else
-    clear_monitor(motherboard_get_monitor());
-#endif
+    monitor_clear(motherboard_get_monitor());
 }
 
 void main() {

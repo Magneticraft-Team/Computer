@@ -35,7 +35,7 @@ static DiskDrive disk = {
         .accessTime = 1,
         .currentSector = 0,
         .hasDisk = 1,
-        .numSectors = 256,
+        .numSectors = 128,
 };
 
 static NetworkCard card = {

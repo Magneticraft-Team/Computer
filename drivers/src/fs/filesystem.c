@@ -5,28 +5,12 @@
 #include <motherboard.h>
 #include <fs/filesystem.h>
 #include <string.h>
-#include <debug.h>
 #include <glib/math.h>
+#include <fs/access.h>
+#include <util/bitmap.h>
+#include <debug.h>
 
-static DiskDrive *drive = NULL;
 static Int currentDevice = -1;
-static Byte *blockBuffer = NULL;
-
-static void bitmap_set(Byte *bitmap, Int index, Boolean value) {
-    int x = index / 8;
-    int y = index % 8;
-    if (value) {
-        bitmap[x] |= 1 << y;
-    } else {
-        bitmap[x] &= ~(1 << y);
-    }
-}
-
-static Boolean bitmap_get(Byte *bitmap, Int index) {
-    int x = index / 8;
-    int y = index % 8;
-    return (bitmap[x] & (1 << y)) ? TRUE : FALSE;
-}
 
 static void addChild(INodeRef parent, String *childrenName, INodeRef children, Int parentSize) {
     struct DirectoryEntry newEntry;
@@ -40,53 +24,18 @@ static void addChild(INodeRef parent, String *childrenName, INodeRef children, I
 
 static void removeChildren(INodeRef parent) {
     struct DirectoryEntry entry;
-    int read;
+    int read, index = 0;
 
     while (1) {
-        read = fs_read(parent, (const ByteBuffer) &entry, 0, sizeof(struct DirectoryEntry));
+        read = fs_read(parent, (const ByteBuffer) &entry,
+                       sizeof(struct DirectoryEntry) * index++, sizeof(struct DirectoryEntry));
+
         if (read == 0) return;
-        fs_delete(parent, entry.inode);
+        if (strcmp(entry.name, "..") != 0 && strcmp(entry.name, ".") != 0) {
+            fs_delete(parent, entry.inode);
+        }
     }
 }
-
-#ifdef DEBUG_ENV
-
-static void loadSector(BlockRef sector) {
-    FILE *file = fopen("file1.img", "rb");
-    fseek(file, sector * 1024, SEEK_SET);
-    memset(blockBuffer, 0, 1024);
-    fread(blockBuffer, 1024, 1, file);
-    fclose(file);
-}
-
-static void saveSector(BlockRef sector) {
-    if (sector < 0) {
-        *(Byte *) 0x0 = 0;
-    }
-    FILE *file = fopen("file1.img", "rb+");
-    if (!file) {
-        fclose(fopen("file1.img", "wb+"));
-        file = fopen("file1.img", "rb+");
-    }
-    fseek(file, sector * 1024, SEEK_SET);
-    fwrite(blockBuffer, 1024, 1, file);
-    fflush(file);
-    fclose(file);
-}
-
-#else
-static void loadSector(BlockRef sector) {
-    disk_drive_set_current_sector(drive, sector);
-    disk_drive_signal(drive, DISK_DRIVE_SIGNAL_READ);
-    motherboard_sleep((Byte) disk_drive_get_access_time(drive));
-}
-
-static  void saveSector(BlockRef sector) {
-    disk_drive_set_current_sector(drive, sector);
-    disk_drive_signal(drive, DISK_DRIVE_SIGNAL_WRITE);
-    motherboard_sleep((Byte) disk_drive_get_access_time(drive));
-}
-#endif
 
 static BlockRef allocBlock() {
     loadSector(0);
@@ -98,7 +47,7 @@ static BlockRef allocBlock() {
         if (!bitmap_get(group->blockBitmap, i)) {
             bitmap_set(group->blockBitmap, i, TRUE);
             saveSector(0);
-            kdebug("allocBlock success, block: %d\n", i + group->blocksOffset);
+//            kdebug("allocBlock success, block: %d\n", i + group->blocksOffset);
             return i + group->blocksOffset;
         }
     }
@@ -120,20 +69,20 @@ static void freeBlock(BlockRef ref) {
 
     bitmap_set(group->blockBitmap, index, FALSE);
     saveSector(0);
-    kdebug("freeBlock %d success\n", ref);
+//    kdebug("freeBlock %d success\n", ref);
 }
 
 void fs_init(DiskDrive *_drive) {
-    drive = _drive;
-    blockBuffer = (Byte *) disk_drive_get_buffer(drive);
+    currentDiskDrive = _drive;
+    blockBuffer = (Byte *) disk_drive_get_buffer(currentDiskDrive);
     currentDevice = fs_getDevice();
 }
 
 void fs_format() {
-    if (drive == NULL) return;
-    if (!disk_drive_has_disk(drive)) return;
+    if (currentDiskDrive == NULL) return;
+    if (!disk_drive_has_disk(currentDiskDrive)) return;
 
-    int sectorCount = disk_drive_get_num_sectors(drive);
+    int sectorCount = disk_drive_get_num_sectors(currentDiskDrive);
     int time = motherboard_get_minecraft_world_time();
 
     // first block
@@ -150,11 +99,12 @@ void fs_format() {
         struct BlockGroup *group = &block->blockGroupList[0];
         memset(group->blockBitmap, 0, FS_BLOCK_GROUP_BITMAP_BYTES);
 
-        bitmap_set(group->blockBitmap, 0, TRUE);
+        bitmap_set(group->blockBitmap, 0, TRUE); // inode table
+        bitmap_set(group->blockBitmap, 1, TRUE); // root directory
 
         group->inodeTable = 1;
-        group->blocksOffset = 3;
-        group->numberOfBlocks = MIN(sectorCount - 2, 128);
+        group->blocksOffset = 1;
+        group->numberOfBlocks = MIN(sectorCount - 1, 128);
     }
     saveSector(0); // first block
 
@@ -199,8 +149,8 @@ void fs_format() {
 }
 
 Int fs_getFreeBlocks() {
-    if (drive == NULL) return -1;
-    if (!disk_drive_has_disk(drive)) return -1;
+    if (currentDiskDrive == NULL) return -1;
+    if (!disk_drive_has_disk(currentDiskDrive)) return -1;
 
     loadSector(0);
     struct SuperBlock *block = (struct SuperBlock *) blockBuffer;
@@ -217,15 +167,14 @@ Int fs_getFreeBlocks() {
         for (int j = 0; j < group->numberOfBlocks; ++j) {
             if (!bitmap_get(group->blockBitmap, j)) count++;
         }
-        motherboard_signal(MOTHERBOARD_SIGNAL_HALT);
     }
 
     return count;
 }
 
 Int fs_getDevice() {
-    if (drive == NULL) return -1;
-    if (!disk_drive_has_disk(drive)) return -1;
+    if (currentDiskDrive == NULL) return -1;
+    if (!disk_drive_has_disk(currentDiskDrive)) return -1;
     loadSector(0);
     struct SuperBlock *block = (struct SuperBlock *) blockBuffer;
     if (block->magicNumber != FS_MAGIC_NUMBER)
@@ -254,8 +203,8 @@ static Boolean fs_findFreeINode(BlockRef inodeTableRef, INodeRef *result) {
 }
 
 INodeRef fs_create(INodeRef parent, String *name, Int flags) {
-    if (drive == NULL) return FS_NULL_INODE_REF;
-    if (!disk_drive_has_disk(drive)) return FS_NULL_INODE_REF;
+    if (currentDiskDrive == NULL) return FS_NULL_INODE_REF;
+    if (!disk_drive_has_disk(currentDiskDrive)) return FS_NULL_INODE_REF;
 
     struct INode parentNode;
 
@@ -338,6 +287,20 @@ INodeRef fs_create(INodeRef parent, String *name, Int flags) {
     // add file to the parent directory
     addChild(parent, name, newINode, parentNode.size);
 
+    // Add .. and .
+    if (flags == FS_FLAG_DIRECTORY) {
+        struct DirectoryEntry entries[2];
+
+        entries[0].inode = parent;
+        memset(entries[0].name, 0, FS_MAX_FILE_NAME_SIZE);
+        strcpy(entries[0].name, "..");
+        entries[1].inode = newINode;
+        memset(entries[1].name, 0, FS_MAX_FILE_NAME_SIZE);
+        strcpy(entries[1].name, ".");
+
+        fs_write(newINode, (ByteBuffer const) &entries, 0, sizeof(struct DirectoryEntry) * 2);
+    }
+
     return newINode;
 }
 
@@ -416,7 +379,7 @@ Int fs_delete(INodeRef parent, INodeRef file) {
     } while (1);
 
     // Reduce the parent size
-    return fs_truncate(parent, parentNode.size - sizeof(struct DirectoryEntry));
+    return fs_truncate(parent, parentNode.size - sizeof(struct DirectoryEntry)) ? 0 : 1;
 }
 
 INodeRef fs_findFile(INodeRef parent, String *name) {
@@ -452,8 +415,8 @@ INodeRef fs_findFile(INodeRef parent, String *name) {
 }
 
 Boolean fs_getINode(INodeRef inode, struct INode *dst) {
-    if (drive == NULL) return FALSE;
-    if (!disk_drive_has_disk(drive)) return FALSE;
+    if (currentDiskDrive == NULL) return FALSE;
+    if (!disk_drive_has_disk(currentDiskDrive)) return FALSE;
 
     if (inode < 0) {
         return FALSE;
@@ -490,8 +453,8 @@ Boolean fs_getINode(INodeRef inode, struct INode *dst) {
 }
 
 Boolean fs_setINode(INodeRef inode, struct INode *src) {
-    if (drive == NULL) return FALSE;
-    if (!disk_drive_has_disk(drive)) return FALSE;
+    if (currentDiskDrive == NULL) return FALSE;
+    if (!disk_drive_has_disk(currentDiskDrive)) return FALSE;
 
     if (inode < 0) {
         return FALSE;

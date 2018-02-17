@@ -91,4 +91,7 @@ Boolean monitor_has_mouse_events(Monitor *monitor);
 // the last event, check monitor_has_mouse_events to avoid that
 struct mouse_event monitor_get_last_mouse_event(Monitor *monitor);
 
+// Clear all text in the monitor
+void monitor_clear(Monitor *monitor);
+
 #endif //COMPUTER_MONITOR_H

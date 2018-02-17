@@ -1,15 +1,14 @@
 //
-// Created by cout970 on 2017-07-23.
+// Created by cout970 on 11/02/18.
 //
-
-#ifndef DRIVER_MALLOC_H
-#define DRIVER_MALLOC_H
 
 /**
  * Original implementation: http://www.flipcode.com/archives/Simple_Malloc_Free_Functions.shtml
  *
  * Low level malloc implementation for stuff that doesn't use stdlib.h
  */
+
+#include <types.h>
 
 #define USED 1
 
@@ -57,7 +56,7 @@ static UNIT *compact(UNIT *p, unsigned nsize) {
     return 0;
 }
 
-void malloc_free(void *ptr) {
+void free(Ptr ptr) {
     if (ptr) {
         UNIT *p;
 
@@ -66,7 +65,7 @@ void malloc_free(void *ptr) {
     }
 }
 
-void *malloc_alloc(unsigned size) {
+Ptr malloc(unsigned size) {
     unsigned fsize;
     UNIT *p;
 
@@ -109,5 +108,3 @@ void malloc_init(void *heap, unsigned len) {
 void malloc_compact(void) {
     malloc_heap.free = compact(malloc_heap.heap, 0x7FFFFFFF);
 }
-
-#endif //DRIVER_MALLOC_H

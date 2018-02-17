@@ -8,26 +8,6 @@
 #include "devices.h"
 #include "types.h"
 
-struct network_card_header {
-/*    0 0x000 */    struct device_header header;
-/*    4 0x004 */    const Byte internetAllowed;
-/*    5 0x005 */    const Byte maxSockets;
-/*    6 0x006 */    const Byte activeSockets;
-/*    7 0x007 */    Byte signal;
-/*    8 0x008 */    const Int macAddress;
-/*   12 0x00c */    Int targetMac;
-/*   16 0x010 */    Int targetPort;
-/*   20 0x014 */    Byte targetIp[80];
-/*  100 0x064 */    const Int connectionOpen;
-/*  104 0x068 */    const Int connectionError;
-/*  108 0x06c */    Int inputBufferPtr;
-/*  112 0x070 */    Int outputBufferPtr;
-/*  116 0x074 */    Byte inputBuffer[1024];
-/* 1140 0x474 */    Byte outputBuffer[1024];
-};
-
-typedef struct network_card_header NetworkCard;
-
 #define NETWORK_IP_MAX_SIZE 80
 #define NETWORK_BUFFER_MAX_SIZE 1024
 
@@ -47,6 +27,28 @@ typedef struct network_card_header NetworkCard;
 #define NETWORK_SIGNAL_OPEN_TCP_CONNECTION 1
 #define NETWORK_SIGNAL_CLOSE_TCP_CONNECTION 2
 #define NETWORK_SIGNAL_OPEN_SSL_TCP_CONNECTION 3
+
+struct network_card_header {
+/*    0 0x000 */    struct device_header header;
+/*    4 0x004 */    const Byte internetAllowed;
+/*    5 0x005 */    const Byte maxSockets;
+/*    6 0x006 */    const Byte activeSockets;
+/*    7 0x007 */    Byte signal;
+/*    8 0x008 */    const Int macAddress;
+/*   12 0x00c */    Int targetMac;
+/*   16 0x010 */    Int targetPort;
+/*   20 0x014 */    Byte targetIp[80];
+/*  100 0x064 */    const Int connectionOpen;
+/*  104 0x068 */    const Int connectionError;
+/*  108 0x06c */    Int inputBufferPtr;
+/*  112 0x070 */    Int outputBufferPtr;
+/*  112 0x074 */    Int hardwareLock;
+/*  120 0x078 */    Byte inputBuffer[NETWORK_BUFFER_MAX_SIZE];
+/* 1144 0x474 */    Byte outputBuffer[NETWORK_BUFFER_MAX_SIZE];
+};
+
+typedef struct network_card_header NetworkCard;
+
 
 void network_signal(NetworkCard *network, Byte signal);
 
@@ -70,16 +72,8 @@ Boolean network_is_connection_open(NetworkCard *network);
 
 Int network_get_connection_error(NetworkCard *network);
 
-Int network_get_input_pointer(NetworkCard *network);
+Int network_send(NetworkCard *network, ByteBuffer data, Int size);
 
-void network_set_input_pointer(NetworkCard *network, Int ptr);
-
-Byte *network_get_input_buffer(NetworkCard *network);
-
-Int network_get_output_pointer(NetworkCard *network);
-
-void network_set_output_pointer(NetworkCard *network, Int ptr);
-
-Byte volatile *network_get_output_buffer(NetworkCard *network);
+Int network_receive(NetworkCard *network, ByteBuffer buffer, Int bufferSize);
 
 #endif //DRIVER_NETWORK_H

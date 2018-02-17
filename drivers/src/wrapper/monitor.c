@@ -67,3 +67,7 @@ struct mouse_event monitor_get_last_mouse_event(Monitor *monitor) {
     monitor->mouseBufferSize--;
     return event;
 }
+
+void monitor_clear(Monitor *mon) {
+    // DO nothing
+}

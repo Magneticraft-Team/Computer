@@ -67,3 +67,19 @@ struct mouse_event monitor_get_last_mouse_event(Monitor *monitor) {
     monitor->mouseBufferSize--;
     return event;
 }
+
+void monitor_clear(Monitor *mon) {
+    Int i;
+    Int lines = monitor_get_num_lines(mon);
+    Int columns = monitor_get_num_columns(mon);
+
+    for (i = 0; i < columns; i++) {
+        monitor_get_line_buffer(mon)[i] = 0x20;
+    }
+
+    for (i = 0; i < lines; i++) {
+        monitor_set_selected_line(mon, i);
+        monitor_signal(mon, MONITOR_SIGNAL_WRITE);
+    }
+    monitor_set_selected_line(mon, 0);
+}
