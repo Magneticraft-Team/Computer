@@ -5,106 +5,128 @@
 /**
  * Original implementation: http://www.flipcode.com/archives/Simple_Malloc_Free_Functions.shtml
  *
- * Low level malloc implementation for stuff that doesn't use stdlib.h
+ * Simple malloc implementation
+ *
+ * This is based on a stack, where freeCell is start of free space
+ * and when there is no enough space left the stack is iterated from
+ * bottom to top searching for a empty spot and joining empty cells,
+ * if no cell has enough size returns 0
  */
 
 #include <types.h>
 
-#define USED 1
+#define WORD_ALIGN(x) ((((x) + 3) >> 2) << 2)
 
 typedef struct {
-    unsigned size;
-} UNIT;
+    union {
+        struct {
+            Int size:31;
+            Int used:1;
+        };
+        Int raw;
+    };
+} Cell;
 
-typedef struct {
-    UNIT *free;
-    UNIT *heap;
-} MALLOC_HEAP;
+static struct {
+    Cell *heapStart;
+    Cell *freeCell;
+} Heap;
 
-static MALLOC_HEAP malloc_heap;
+// Compacts the heap util it finds a empty cell with a size greater than the first argument, returns null otherwise
+Cell *compact(Int size) {
+    Cell *current = Heap.heapStart;
+    Cell *bestCell = current;
+    Int bestSize = 0;
 
-static UNIT *compact(UNIT *p, unsigned nsize) {
-    unsigned bsize, psize;
-    UNIT *best;
+    while (1) {
+        Int cellSize = current->size;
 
-    best = p;
-    bsize = 0;
+        // Reached end of heap
+        if (cellSize == 0) break;
 
-    while (psize = p->size, psize) {
-        if (psize & USED) {
-            if (bsize != 0) {
-                best->size = bsize;
-                if (bsize >= nsize) {
-                    return best;
+        if (!current->used) {
+            // if the cell is not used, add its space to the previous empty cell
+            bestSize += cellSize;
+        } else {
+            // End of consecutive empty cells
+            if (bestSize != 0) {
+                // Join all empty cells into one
+                bestCell->size = bestSize;
+
+                // If this cell is big enough, stop compacting the heap
+                if (bestSize >= size) {
+                    return bestCell;
                 }
             }
-            bsize = 0;
-            best = p = (UNIT *) ((unsigned) p + (psize & ~USED));
-        } else {
-            bsize += psize;
-            p = (UNIT *) ((unsigned) p + psize);
+            // Advance to the next cell
+            bestSize = 0;
+            bestCell = (Cell *) ((Int) current + cellSize);
+        }
+        // Continue to the next cell
+        current = (Cell *) ((Int) current + cellSize);
+    }
+
+    // Last check for the case when the empty cell is the last cell
+    if (bestSize != 0) {
+        // Join all empty cells into one
+        bestCell->size = bestSize;
+
+        // If this cell is big enough, stop compacting the heap
+        if (bestSize >= size) {
+            return bestCell;
         }
     }
 
-    if (bsize != 0) {
-        best->size = bsize;
-        if (bsize >= nsize) {
-            return best;
-        }
-    }
-
-    return 0;
+    // Unable to find a good spot
+    return NULL;
 }
 
-void free(Ptr ptr) {
-    if (ptr) {
-        UNIT *p;
-
-        p = (UNIT *) ((unsigned) ptr - sizeof(UNIT));
-        p->size &= ~USED;
-    }
+void free(Ptr address) {
+    if (!address) return;
+    Cell *cell = (Cell *) ((UInt) address - sizeof(Cell));
+    cell->used = 0;
 }
 
-Ptr malloc(unsigned size) {
-    unsigned fsize;
-    UNIT *p;
+Ptr malloc(UInt size) {
+    if (size == 0) return NULL;
+    // Real size of the memory to alloc
+    Int toAlloc = WORD_ALIGN(size + sizeof(Cell));
 
-    if (size == 0) return 0;
+    if (Heap.freeCell == NULL || Heap.freeCell->size < toAlloc) {
+        Heap.freeCell = compact(toAlloc);
 
-    size += 3 + sizeof(UNIT);
-    size >>= 2;
-    size <<= 2;
-
-    if (malloc_heap.free == 0 || size > malloc_heap.free->size) {
-        malloc_heap.free = compact(malloc_heap.heap, size);
-        if (malloc_heap.free == 0) return 0;
+        // No free space to alloc this much memory
+        if (Heap.freeCell == NULL) return NULL;
     }
 
-    p = malloc_heap.free;
-    fsize = malloc_heap.free->size;
+    Cell *res = Heap.freeCell;
+    Int cellSize = Heap.freeCell->size;
 
-    if (fsize >= size + sizeof(UNIT)) {
-        malloc_heap.free = (UNIT *) ((unsigned) p + size);
-        malloc_heap.free->size = fsize - size;
+    if (cellSize >= toAlloc + sizeof(Cell)) {
+        // Enough space for this alloc and for a new cell
+        Heap.freeCell = (Cell *) ((Int) Heap.freeCell + toAlloc);
+        Heap.freeCell->size = cellSize - toAlloc;
     } else {
-        malloc_heap.free = 0;
-        size = fsize;
+        // Uses all space left
+
+        // Set freeCell to NULL forcing the next allocation to search for another free cell
+        // stating at the bottom of the heap
+        Heap.freeCell = NULL;
+        toAlloc = cellSize;
     }
 
-    p->size = size | USED;
-
-    return (void *) ((unsigned) p + sizeof(UNIT));
+    res->used = 1;
+    res->size = toAlloc;
+    return (Ptr) ((Int) res + sizeof(Cell));
 }
 
-void malloc_init(void *heap, unsigned len) {
-    len += 3;
-    len >>= 2;
-    len <<= 2;
-    malloc_heap.free = malloc_heap.heap = (UNIT *) heap;
-    malloc_heap.free->size = malloc_heap.heap->size = len - sizeof(UNIT);
-    *(unsigned *) ((char *) heap + len - 4) = 0;
-}
+// If size is not word aligned the size will be increased up to 3 bytes
+void initHeap(Ptr start, UInt size) {
+    UInt realSize = WORD_ALIGN(size);
+    Heap.heapStart = Heap.freeCell = start;
+    Heap.heapStart->used = Heap.freeCell->used = 0;
+    Heap.heapStart->size = Heap.freeCell->size = realSize - sizeof(Cell);
 
-void malloc_compact(void) {
-    malloc_heap.free = compact(malloc_heap.heap, 0x7FFFFFFF);
+    // Set last word to 0 , used to detect the end of the heap
+    *(Int *) (start + realSize - sizeof(Cell)) = 0;
 }

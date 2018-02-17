@@ -23,7 +23,10 @@
 #define FILE_OPEN_APPEND       4  //Append new information to the end of the file.
 #define FILE_OPEN_TRUNCATE     8  //Initially clear all data from the file.
 #define FILE_OPEN_CREATE      16  //If the file does not exist, create it.
-#define FILE_OPEN_EXCLUSIVE   32  //Combined with the O_CREAT option. If the file already exists, the call will fail.
+#define FILE_OPEN_EXCLUSIVE   32  //Combined with the FILE_OPEN_CREATE option. If the file already exists, the call will fail.
+
+#define FILE_TYPE_REGULAR 0
+#define FILE_TYPE_DIRECTORY 1
 
 // Default file descriptors
 #define STDIN_FILENO 0  // Monitor input
@@ -36,7 +39,7 @@
 
 // Basic file info
 struct file_stat {
-    Int mode;     // The current permissions on the file.
+    Int type;  // The type of the file.
     Int size;  // The size of the file
     Int inode; // The inode for the file (note that this number is unique to all files and directories on a Linux System.
     Int device;// The device that the file currently resides on.
@@ -56,13 +59,13 @@ Int file_write(FD fd, const ByteBuffer buf, Int nbytes);
 // Reads nbytes from the file into the buffer, returns the amount of bytes read
 Int file_read(FD fd, ByteBuffer buf, Int nbytes);
 
-// Reads the file info, see file_stat, returns -1 on error
-Int file_stat(FD fd, struct file_stat *ref);
+// Reads the file info, see file_stat, returns FALSE on error
+Boolean file_stat(FD fd, struct file_stat *ref);
 
 // Sets the read and write pointers, see FILE_SEEK_* for 'whence'
-Int file_seek(FD fd, Int offset, Int whence);
+Boolean file_seek(FD fd, Int offset, Int whence);
 
-// Close a file, return -1 on error
-Int file_close(FD fd);
+// Close a file, return FALSE on error
+Boolean file_close(FD fd);
 
 #endif //COMPUTER_FILE_H

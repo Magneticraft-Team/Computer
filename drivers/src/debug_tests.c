@@ -5,6 +5,7 @@
 #include <motherboard.h>
 #include <network.h>
 #include <string.h>
+#include <fs/file.h>
 #include "debug.h"
 #include "fs/filesystem.h"
 
@@ -80,8 +81,9 @@ void test_network_api() {
     assert(0x068, (int) &mb->connectionError, "connectionError");
     assert(0x06c, (int) &mb->inputBufferPtr, "inputBufferPtr");
     assert(0x070, (int) &mb->outputBufferPtr, "outputBufferPtr");
-    assert(0x074, (int) &mb->inputBuffer, "inputBuffer");
-    assert(0x474, (int) &mb->outputBuffer, "outputBuffer");
+    assert(0x074, (int) &mb->hardwareLock, "hardwareLock");
+    assert(0x078, (int) &mb->inputBuffer, "inputBuffer");
+    assert(0x478, (int) &mb->outputBuffer, "outputBuffer");
 }
 
 void print_motherboard_data() {
@@ -252,24 +254,45 @@ void test_filesystem() {
     test_ls(root);
     kdebug("\n");
 
-    kdebug("Test fill disk\n");
+//    kdebug("Test fill disk\n");
+//
+//    char buffer[1024];
+//    char fileName[] = "a";
+//    INodeRef newFile;
+//
+//    for (int i = 'a'; i <= 'z'; ++i) {
+//
+//        memset(buffer, (char) i, 1024);
+//        fileName[0] = (char) i;
+//        newFile = fs_create(root, fileName, FS_FLAG_FILE);
+//        kdebug("New file %d, at '%s'\n", newFile, fileName);
+//        fs_write(newFile, buffer, 0, 1024);
+//        kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(), totalBlocks);
+//        kdebug("> ls\n");
+//        test_ls(root);
+//        kdebug("\n");
+//    }
+}
 
-    char buffer[1024];
-    char fileName[] = "a";
-    INodeRef newFile;
+void test_files() {
+    FD test = file_open("test.txt", FILE_OPEN_CREATE);
 
-    for (int i = 'a'; i <= 'z'; ++i) {
+    file_write(test, "12345\n", sizeof("12345\n") - 1);
+    file_write(test, "12345\n", sizeof("12345\n"));
 
-        memset(buffer, (char) i, 1024);
-        fileName[0] = (char) i;
-        newFile = fs_create(root, fileName, FS_FLAG_FILE);
-        kdebug("New file %d, at '%s'\n", newFile, fileName);
-        fs_write(newFile, buffer, 0, 1024);
-        kdebug("Free blocks: %d, total blocks: %d\n", fs_getFreeBlocks(), totalBlocks);
-        kdebug("> ls\n");
-        test_ls(root);
-        kdebug("\n");
-    }
+    String buffer[80];
+    file_read(test, buffer, 80);
+    kdebug("Buffer: '%s'\n", buffer);
+
+    struct file_stat stat;
+    file_stat(test, &stat);
+    kdebug("Stat: size = %d, atime = %d, mtime = %d, inode = %d\n", stat.size, stat.atime, stat.mtime, stat.inode);
+
+    kdebug("> ls\n");
+    test_ls(fs_getRoot());
+    kdebug("\n");
+
+    file_close(test);
 }
 
 void test_network_pastebin(NetworkCard *net, INodeRef file) {
@@ -328,9 +351,10 @@ void main() {
 
     print_hardware_info();
     test_filesystem();
+    test_files();
 
-    if (net) {
-        INodeRef file = fs_findFile(fs_getRoot(), "a");
-        test_network_pastebin(net, file);
-    }
+//    if (net) {
+//        INodeRef file = fs_findFile(fs_getRoot(), "a");
+//        test_network_pastebin(net, file);
+//    }
 }

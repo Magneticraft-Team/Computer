@@ -14,6 +14,9 @@
 #define IGNORED __attribute__((unused))
 #define PACKED __attribute__((packed))
 
+#define ERROR -1
+#define SUCCESS 0
+
 #define FALSE 0
 #define TRUE (!FALSE)
 
