@@ -9,7 +9,7 @@
 
 void initCodeGenerator(FD dst);
 
-void writeInstruction(int rawInstruction);
+void writeRawInstruction(unsigned int rawInstruction);
 
 void compileRInstruction(int reg1, int reg2, int reg3, int sht, int func);
 

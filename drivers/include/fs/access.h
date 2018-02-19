@@ -5,6 +5,8 @@
 #ifndef COMPUTER_ACCESS_H
 #define COMPUTER_ACCESS_H
 
+#include <filesystem.h>
+
 extern ByteBuffer blockBuffer;
 extern DiskDrive *currentDiskDrive;
 

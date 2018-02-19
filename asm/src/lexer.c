@@ -12,6 +12,14 @@ char tokenBuffer[TOKEN_BUFFER_SIZE];
 int tokenLook;
 int tokenNumberBase = 10;
 
+const char *tokenNames[] = {
+        "ADD", "ADDI", "ADDIU", "ADDU", "AND", "ANDI", "BEQ", "BGEZ", "BGEZAL", "BGTZ", "BLEZ",
+        "BLTZ", "BLTZAL", "BNE",
+        "DIV", "DIVU", "J", "JAL", "JR", "LB", "LUI", "LW", "MFHI", "MFLO", "MULT", "MULTU", "NOOP", "OR", "ORI", "SB",
+        "SLL", "SLLV", "SLT", "SLTI", "SLTIU", "SLTU", "SRA", "SRL", "SRLV", "SUB", "SUBU", "SW", "SYSCALL", "XOR",
+        "XOR", "NAME", "NUMBER", "$", ".", "\\n", ":", ",", "(", ")", "EOF", "Error"
+};
+
 const char *keywords[] = {
         "ADD", "ADDI", "ADDIU", "ADDU", "AND", "ANDI", "BEQ", "BGEZ", "BGEZAL", "BGTZ", "BLEZ", "BLTZ", "BLTZAL", "BNE",
         "DIV", "DIVU", "J", "JAL", "JR", "LB", "LUI", "LW", "MFHI", "MFLO", "MULT", "MULTU", "NOOP", "OR", "ORI", "SB",

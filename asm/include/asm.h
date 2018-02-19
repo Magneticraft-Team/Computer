@@ -6,6 +6,7 @@
 #define COMPUTER_ASM_H
 
 #include "dependencies.h"
+#include <fs/filesystem.h>
 
 extern jmp_buf onError;
 

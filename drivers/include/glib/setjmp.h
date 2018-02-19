@@ -17,7 +17,9 @@ typedef int jmp_buf[31];
  * value of the argument of longjmp
  */
 
-int setjmp(jmp_buf buf);
+#define setjmp(buf) _setjmp(buf)
+
+int _setjmp(jmp_buf buf);
 
 /**
  * Returns to the last setjmp call and act as if setjmp() had returned

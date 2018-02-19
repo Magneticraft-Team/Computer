@@ -17,7 +17,7 @@ void initCodeGenerator(FD dst) {
     dstFile = dst;
 }
 
-void writeInstruction(unsigned int code) {
+void writeRawInstruction(unsigned int code) {
     ((int *) codeBuffer)[codeBufferIndex++] = code;
     if (codeBufferIndex == CODE_BUFFER_SIZE) {
         file_write(dstFile, (ByteBuffer const) codeBuffer, CODE_BUFFER_SIZE);
@@ -42,7 +42,7 @@ void compileRInstruction(int reg1, int reg2, int reg3, int sht, int func) {
     kdebug("0x%08x (%d)\n", instr, instr);
     kdebug("%d $%d, $%d, $%d sht: %d\n", func, reg1, reg2, reg3, sht);
 #endif
-    writeInstruction(instr);
+    writeRawInstruction(instr);
 }
 
 void compileIInstruction(int opcode, int reg1, int reg2, int inmed) {
@@ -62,7 +62,7 @@ void compileIInstruction(int opcode, int reg1, int reg2, int inmed) {
     kdebug("0x%08x (%d)\n", instr, instr);
     kdebug("%d $%d, $%d, %d  (0x%08x)\n", opcode, reg1, reg2, inmed, inmed);
 #endif
-    writeInstruction(instr);
+    writeRawInstruction(instr);
 }
 
 void compileJInstruction(int opcode, int addr) {
@@ -81,5 +81,5 @@ void compileJInstruction(int opcode, int addr) {
     kdebug("0x%08x (%d)\n", instr, instr);
     kdebug("opcode = %d, addr = %d (0x%x)\n", opcode, addr, addr);
 #endif
-    writeInstruction(instr);
+    writeRawInstruction(instr);
 }

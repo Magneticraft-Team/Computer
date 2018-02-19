@@ -9,13 +9,6 @@
 #include "../include/reader.h"
 #include "../include/code_generator.h"
 
-const char *tokenNames[] = {
-        "ADD", "ADDI", "ADDIU", "ADDU", "AND", "ANDI", "BEQ", "BGEZ", "BGEZAL", "BGTZ", "BLEZ",
-        "BLTZ", "BLTZAL", "BNE",
-        "DIV", "DIVU", "J", "JAL", "JR", "LB", "LUI", "LW", "MFHI", "MFLO", "MULT", "MULTU", "NOOP", "OR", "ORI", "SB",
-        "SLL", "SLLV", "SLT", "SLTI", "SLTIU", "SLTU", "SRA", "SRL", "SRLV", "SUB", "SUBU", "SW", "SYSCALL", "XOR",
-        "XOR", "NAME", "NUMBER", "$", ".", "\\n", ":", ",", "(", ")", "EOF", "Error"
-};
 
 const char *registerNames[] = {
         "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "s0", "s1",
@@ -366,20 +359,20 @@ void parseLine() {
             parse(0, 0b100110);
             break;
         case TK_NOOP:
-            writeInstruction(0b000000);
+            writeRawInstruction(0b000000);
             break;
         case TK_SYSCALL:
-            writeInstruction(0b001100);
+            writeRawInstruction(0b001100);
         case TK_NAME:
             expect(TK_SEMICOLON);
-
-            item = &(identifierTable[identifierTableIndex]);
-            strcpy(item->identifier, tokenBuffer);
-            item->index = codeBufferIndex;
-#ifdef DEBUG
-            kdebug("name = '%s', addr = %d\n", tokenBuffer, codeBufferIndex);
-#endif
-            identifierTableIndex++;
+            // TODO
+//            item = &(identifierTable[identifierTableIndex]);
+//            strcpy(item->identifier, tokenBuffer);
+//            item->index = codeBufferIndex;
+//#ifdef DEBUG
+//            kdebug("name = '%s', addr = %d\n", tokenBuffer, codeBufferIndex);
+//#endif
+//            identifierTableIndex++;
             break;
         case TK_DOT:
             expect(TK_NAME);

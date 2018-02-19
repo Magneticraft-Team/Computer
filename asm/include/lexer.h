@@ -11,6 +11,8 @@ extern int tokenLook;
 extern char tokenBuffer[TOKEN_BUFFER_SIZE];
 extern int tokenNumberBase;
 
+extern const char *tokenNames[];
+
 int scanToken();
 
 void readToken();

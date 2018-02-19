@@ -102,7 +102,7 @@ Ptr malloc(UInt size) {
     Cell *res = Heap.freeCell;
     Int cellSize = Heap.freeCell->size;
 
-    if (cellSize >= toAlloc + sizeof(Cell)) {
+    if ((UInt)cellSize >= toAlloc + sizeof(Cell)) {
         // Enough space for this alloc and for a new cell
         Heap.freeCell = (Cell *) ((Int) Heap.freeCell + toAlloc);
         Heap.freeCell->size = cellSize - toAlloc;

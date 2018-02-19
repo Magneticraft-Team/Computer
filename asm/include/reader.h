@@ -5,6 +5,8 @@
 #ifndef COMPUTER_READER_H
 #define COMPUTER_READER_H
 
+#include <fs/file.h>
+
 extern int currentLine;
 extern int currentColumn;
 
