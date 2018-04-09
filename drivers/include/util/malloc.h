@@ -11,6 +11,8 @@ void free(Ptr ptr);
 
 Ptr malloc(UInt size);
 
+Ptr realloc(Ptr ptr, UInt size);
+
 void initHeap(Ptr start, UInt size);
 
 #endif //DRIVER_MALLOC_H

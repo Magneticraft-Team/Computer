@@ -120,6 +120,20 @@ Ptr malloc(UInt size) {
     return (Ptr) ((Int) res + sizeof(Cell));
 }
 
+Ptr realloc(Ptr ptr, UInt size){
+    if(ptr == NULL || size <= 0)
+        return ptr;
+
+    // TODO make his efficient
+    Ptr new = malloc(size);
+    Cell *cell = (Cell *) ((UInt) ptr - sizeof(Cell));
+
+    cell->used = 0;
+    memcpy(new, ptr, cell->size);
+
+    return new;
+}
+
 // If size is not word aligned the size will be increased up to 3 bytes
 void initHeap(Ptr start, UInt size) {
     UInt realSize = WORD_ALIGN(size);
