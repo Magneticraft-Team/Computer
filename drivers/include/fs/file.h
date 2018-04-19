@@ -15,6 +15,7 @@
 #define COMPUTER_FILE_H
 
 #include <types.h>
+#include "filesystem.h"
 
 // file_open flags, they can be OR-ed
 #define FILE_OPEN_READ_ONLY    1  //Open the file so that it is read only.
@@ -37,6 +38,8 @@
 #define FILE_SEEK_CURRENT   1 // Moves the cursor n bytes from the current pos
 #define FILE_SEEK_END       2 // Set the cursor n byte before the end of the file
 
+#define FD_NULL -1
+
 // Basic file info
 struct file_stat {
     Int type;  // The type of the file.
@@ -53,6 +56,8 @@ typedef int FD;
 // Open a file, return -1 on error
 FD file_open(String *path, Int flags);
 
+FD file_open_inode(INodeRef inode, Int flags);
+
 // Writes nbytes from the buffer into the file, returns the amount of bytes written
 Int file_write(FD fd, const ByteBuffer buf, Int nbytes);
 
@@ -67,5 +72,8 @@ Boolean file_seek(FD fd, Int offset, Int whence);
 
 // Close a file, return FALSE on error
 Boolean file_close(FD fd);
+
+// Check if the read pointer has reach the end of the file
+Boolean file_eof(FD fd);
 
 #endif //COMPUTER_FILE_H

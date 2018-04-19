@@ -2,7 +2,7 @@
 // Created by cout970 on 2017-07-15.
 //
 
-#include <math.h>
+#include "macros.h"
 #include <string.h>
 #include "network.h"
 

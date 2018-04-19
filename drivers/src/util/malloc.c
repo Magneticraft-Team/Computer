@@ -14,6 +14,7 @@
  */
 
 #include <types.h>
+#include <string.h>
 
 #define WORD_ALIGN(x) ((((x) + 3) >> 2) << 2)
 

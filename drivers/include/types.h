@@ -11,10 +11,14 @@
 #define NULL ((void*)0x0)
 #endif
 
+#ifndef EOF
+# define EOF (-1)
+#endif
+
 #define IGNORED __attribute__((unused))
 #define PACKED __attribute__((packed))
 
-#define ERROR -1
+#define ERROR (-1)
 #define SUCCESS 0
 
 #define FALSE 0
@@ -28,7 +32,7 @@ typedef int Int;
 typedef char Boolean;
 typedef char String;
 
-typedef unsigned char UBite;
+typedef unsigned char UByte;
 typedef unsigned short UShort;
 typedef unsigned int UInt;
 

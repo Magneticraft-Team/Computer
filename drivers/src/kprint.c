@@ -9,6 +9,7 @@
 #define SPACE ((char)32)
 
 #ifdef DEBUG_ENV
+
 #include <stdio.h>
 
 void kputchar(char code) {
@@ -124,7 +125,7 @@ int kprints(const char *str) {
     return sum;
 }
 
-int kprintsn(const char *str, int count){
+int kprintsn(const char *str, int count) {
     int sum = 0;
     for (; str[sum] != '\0' && sum < count; sum++) {
         kputchar(str[sum]);
@@ -147,14 +148,21 @@ int kprint(const char *ptr, ...) {
                 sum += kprintn(va_arg(list, int), 10);
             } else if (ptr[i] == 'u') {
                 sum += kprintun(va_arg(list, unsigned int), 10);
-            } else if (ptr[i] == 'x') {
+            } else if (ptr[i] == 'x' || ptr[i] == 'p') {
                 sum += kprintun(va_arg(list, unsigned int), 16);
+            } else if (ptr[i] == 'l') {
+                i++;
+                if (ptr[i + 1] == 'x') {
+                    sum += kprintun(va_arg(list, unsigned int), 16);
+                } else if (ptr[i + 1] == 'i' || ptr[i + 1] == 'd') {
+                    sum += kprintun(va_arg(list, unsigned int), 10);
+                }
             } else if (ptr[i] == 'o') {
                 sum += kprintun(va_arg(list, unsigned int), 8);
             } else if (ptr[i] == 'b') {
                 sum += kprintun(va_arg(list, unsigned int), 2);
             } else if (ptr[i] == 'c') {
-                kputchar(va_arg(list, char));
+                kputchar((char) va_arg(list, int));
                 sum++;
             } else if (ptr[i] == 's') {
                 sum += kprints(va_arg(list, char*));

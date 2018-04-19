@@ -20,21 +20,19 @@ void in_run() {
     Object *obj, *result;
 
     while (1) {
-        obj = pr_parse();
-
-        if (obj == NULL) {
-            break;
-        }
-
         TRY {
-#ifdef DEBUG_ENV
-            kdebug("Input: ");
-            printObj(obj);
-            kdebug("\n");
-#endif
+            obj = pr_parse();
+
+            if (obj == NULL) {
+                break;
+            }
+
             result = eval(obj, obj_env);
-            printObj(result);
-            kdebug("\n");
+
+            if (result != obj_nil) {
+                printObj(result);
+                kdebug("\n");
+            }
         } CATCH {
             // No-op
         };
@@ -53,19 +51,18 @@ Object *eval(Object *exp, Object *env) {
     switch (exp->type) {
         case STRING:
         case NUMBER:
+        case KEYWORD:
         case NATIVE_FUN:
         case FUNC:
+        case MACRO:
             return exp;
         case SYMBOL:
             return lookupSymbol(exp, env);
         case CONS:
-            args = getRest(exp);
             proc = eval(getFirst(exp), env);
+            args = getRest(exp);
 
             return callFunction(proc, args, env);
-        case MACRO:
-            // TODO
-            break;
     }
     /* Not reached */
     return obj_nil;
@@ -87,21 +84,26 @@ Object *lookupSymbol(Object *sym, Object *env) {
 
 Object *callFunction(Object *func, Object *args, Object *env) {
 
+    if (func->type == MACRO) {
+        Object *newEnv = addArgsToEnv(func->macro_env, func->macro_args, evalList(args, env));
+        return eval(expandMacro(func->code, newEnv), env);
+    }
+
     if (func->type == NATIVE_FUN) {
         return func->function(args, env);
+    }
 
-    } else if (func->type == FUNC) {
+    if (func->type == FUNC) {
         Object *newEnv = addArgsToEnv(func->env, func->args, evalList(args, env));
         Object *exp = createCons(obj_progn, func->code);
         return eval(exp, newEnv);
-
-    } else {
-        kdebug("Not a function: ");
-        printObj(func);
-        kdebug("\n");
-        THROW(EXCEPTION_NOT_A_FUNCTION);
-        return obj_nil;
     }
+
+    kdebug("Not a function: ");
+    printObj(func);
+    kdebug("\n");
+    THROW(EXCEPTION_NOT_A_FUNCTION);
+    return obj_nil;
 }
 
 Object *evalList(Object *exps, Object *env) {
@@ -114,6 +116,32 @@ Object *evalList(Object *exps, Object *env) {
     }
 
     return reverse(result);
+}
+
+Object *expandMacro(Object *code, Object *env) {
+
+    if (code->type != CONS) {
+        return code;
+    }
+
+    if (getFirst(code)->type == SYMBOL && symbolEquals(getFirst(code), obj_unquote)) {
+        return eval(getElem(code, 1), env);
+    }
+
+    Object *start = obj_nil;
+    Object **lastCons = &start;
+
+    for (Object *lines = code; lines != obj_nil; lines = getRest(lines)) {
+
+        Object *line = getFirst(lines);
+        Object *expanded = expandMacro(line, env);
+
+        Object *newCons = createCons(expanded, obj_nil);
+        *lastCons = newCons;
+        lastCons = &newCons->cdr;
+    }
+
+    return start;
 }
 
 Object *addArgsToEnv(Object *env, Object *syms, Object *vals) {

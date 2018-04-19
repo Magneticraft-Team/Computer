@@ -10,7 +10,14 @@
 #include "../include/exception.h"
 
 const char *objectTypeNames[] = {
-        "Symbol", "Number", "String", "Cons", "Function", "NativeFunc"
+        "SYMBOL",
+        "KEYWORD",
+        "NUMBER",
+        "STRING",
+        "CONS",
+        "FUNC",
+        "NATIVE_FUN",
+        "MACRO",
 };
 
 static int lastId = 0;
@@ -47,6 +54,10 @@ Object *createSymbol(const char *symbol) {
     return newObject(SYMBOL, 1, strCopy(symbol));
 }
 
+Object *createKeyword(const char *keyword) {
+    return newObject(KEYWORD, 1, strCopy(keyword));
+}
+
 Object *createNumber(int value) {
     return newObject(NUMBER, 1, value);
 }
@@ -67,8 +78,8 @@ Object *createNativeFunc(NativeFunc func) {
     return newObject(NATIVE_FUN, 1, (Object *) func);
 }
 
-Object *createMacro(Object *vars, Object *template) {
-    return newObject(MACRO, 2, vars, template);
+Object *createMacro(Object *args, Object *code, Object *env) {
+    return newObject(MACRO, 3, args, code, env);
 }
 
 Object *getFirst(Object *obj) {
@@ -97,10 +108,45 @@ int getNumber(Object *obj) {
     }
 }
 
+Object *getSymbol(Object *obj) {
+    if (obj->type == SYMBOL) {
+        return obj;
+    } else {
+        kdebug("Not a symbol: ");
+        printObj(obj);
+        kdebug("\n");
+        THROW(EXCEPTION_CAST_TO_SYMBOL_FAILED);
+        return 0;
+    }
+}
+
+String *getString(Object *obj) {
+    if (obj->type == STRING) {
+        return obj->name;
+    } else {
+        kdebug("Not a string: ");
+        printObj(obj);
+        kdebug("\n");
+        THROW(EXCEPTION_CAST_TO_NUMBER_FAILED);
+        return 0;
+    }
+}
+
+String *getKeyword(Object *obj) {
+    if (obj->type == KEYWORD) {
+        return obj->name;
+    } else {
+        kdebug("Not a keyword: ");
+        printObj(obj);
+        kdebug("\n");
+        THROW(EXCEPTION_CAST_TO_KEYWORD_FAILED);
+        return 0;
+    }
+}
+
 Object *getElem(Object *list, int index) {
     Object *aux = list;
-    int i;
-    for (i = 0; i < index; i++) {
+    for (int i = 0; i < index; i++) {
         aux = getRest(aux);
     }
     return getFirst(aux);
@@ -111,12 +157,18 @@ int objEquals(Object *a, Object *b) {
 
     if (a->type == NATIVE_FUN && a->function != b->function) return 0;
     if (a->type == NUMBER && a->number != b->number) return 0;
-    if (a->type == STRING && a->type == SYMBOL && strcmp(a->name, b->name) != 0) return 0;
+    if (a->type == STRING && strcmp(a->name, b->name) != 0) return 0;
+    if (a->type == SYMBOL && strcmp(a->name, b->name) != 0) return 0;
+    if (a->type == KEYWORD && strcmp(a->name, b->name) != 0) return 0;
 
     if (a->type == CONS && (!objEquals(a->car, b->car) || !objEquals(a->cdr, b->cdr)))
         return 0;
 
     if (a->type == FUNC && (!objEquals(a->code, b->code) || !objEquals(a->args, b->args) || !objEquals(a->env, b->env)))
+        return 0;
+
+    if (a->type == MACRO && (!objEquals(a->macro_code, b->macro_code) || !objEquals(a->macro_args, b->macro_args) ||
+                             !objEquals(a->macro_env, b->macro_env)))
         return 0;
 
     return 1;
@@ -129,9 +181,10 @@ int symbolEquals(Object *a, Object *b) {
 }
 
 void debugObj(Object *obj) {
-    kdebug("Object(type=%s, id=%d, ", objectTypeNames[obj->type], obj->id);
+    kdebug("Object(type=%s, id=%d", objectTypeNames[obj->type], obj->id);
     switch (obj->type) {
         case SYMBOL:
+        case KEYWORD:
         case STRING:
             kdebug(", name='%s'", obj->name);
             break;
@@ -141,7 +194,7 @@ void debugObj(Object *obj) {
             break;
 
         case CONS:
-            kdebug(", car='%li', cdr='%li'", (long int) obj->car, (long int) obj->cdr);
+            kdebug(", car='%lx', cdr='%lx'", (long int) obj->car, (long int) obj->cdr);
             break;
 
         case FUNC:
@@ -154,12 +207,13 @@ void debugObj(Object *obj) {
             kdebug(", func='%lx'", (unsigned long int) obj->function);
             break;
     }
-    kdebug(")\n");
+    kdebug(", addr = %lx)\n", (unsigned long int) obj);
 }
 
 void printObj(Object *obj) {
     switch (obj->type) {
         case SYMBOL:
+        case KEYWORD:
             kdebug("%s", obj->name);
             break;
         case NUMBER:

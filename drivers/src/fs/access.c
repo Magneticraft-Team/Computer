@@ -16,6 +16,10 @@ DiskDrive *currentDiskDrive = NULL;
 
 void loadSector(BlockRef sector) {
     FILE *file = fopen("file1.img", "rb");
+    if(!file){
+        fclose(fopen("file1.img", "wb"));
+        file = fopen("file1.img", "rb");
+    }
     fseek(file, sector * 1024, SEEK_SET);
     memset(blockBuffer, 0, 1024);
     fread(blockBuffer, 1024, 1, file);

@@ -78,9 +78,7 @@ static INodeRef getINodeFromPath(String *path, Int create, Int exclusive) {
     return FS_NULL_INODE_REF;
 }
 
-FD file_open(String *path, Int flags) {
-    if (path == NULL) return ERROR;
-
+FD file_open_inode(INodeRef inode, Int flags) {
     // Find empty file descriptor
     Int fd;
     for (fd = 0; fd < MAX_OPEN_FILES; ++fd) {
@@ -89,10 +87,6 @@ FD file_open(String *path, Int flags) {
         }
     }
     if (fd == MAX_OPEN_FILES) return ERROR;
-
-    // Get file inode
-    INodeRef inode = getINodeFromPath(path, flags & FILE_OPEN_CREATE, flags & FILE_OPEN_EXCLUSIVE);
-    if (inode == FS_NULL_INODE_REF) return ERROR;
 
     if (flags & FILE_OPEN_TRUNCATE) {
         fs_truncate(inode, 0);
@@ -113,6 +107,16 @@ FD file_open(String *path, Int flags) {
     entry->inode = inode;
     bitmap_set(FDTable.bitmap, fd, TRUE);
     return fd;
+}
+
+FD file_open(String *path, Int flags) {
+    if (path == NULL) return ERROR;
+
+    // Get file inode
+    INodeRef inode = getINodeFromPath(path, flags & FILE_OPEN_CREATE, flags & FILE_OPEN_EXCLUSIVE);
+    if (inode == FS_NULL_INODE_REF) return ERROR;
+
+    return file_open_inode(inode, flags);
 }
 
 // Writes nbytes from the buffer into the file, returns the amount of bytes written
@@ -200,4 +204,22 @@ Boolean file_close(FD fd) {
 
     bitmap_set(FDTable.bitmap, fd, FALSE);
     return TRUE;
+}
+
+Boolean file_eof(FD fd) {
+    if (fd < 0 || fd > MAX_OPEN_FILES) return TRUE;
+    if (!bitmap_get(FDTable.bitmap, fd)) return TRUE;
+    FileDescriptorEntry *entry = &FDTable.entries[fd];
+
+    if (entry->type == FD_TYPE_FILE) {
+        struct INode res;
+        if (!fs_getINode(entry->inode, &res)) {
+            return TRUE;
+        }
+
+        return entry->readPtr >= res.size;
+    } else {
+        //TODO stdin, stdout
+        return TRUE;
+    }
 }

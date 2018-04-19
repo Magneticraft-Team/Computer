@@ -4,10 +4,13 @@
 #include <assert.h>
 #include <util/input.h>
 #include <debug.h>
+#include <fs/file.h>
+#include "../include/parser.h"
 
 #define BUFFER_SIZE (80-1)
 
-struct {
+struct ReaderState {
+    FD file;
     int index;
     int inPreviousBuffer;
     char *frontBuffer;
@@ -18,6 +21,7 @@ struct {
 
 // Constructor
 void rd_init() {
+    reader.file = FD_NULL;
     reader.index = 0;
     reader.inPreviousBuffer = 0;
 
@@ -28,8 +32,24 @@ void rd_init() {
     memset(reader.bufferB, 0, BUFFER_SIZE);
 }
 
+struct ReaderState *rd_setInput(FD file) {
+    struct ReaderState *state = malloc(sizeof(struct ReaderState));
+    memcpy(state, &reader, sizeof(struct ReaderState));
+
+    rd_init();
+    reader.file = file;
+
+    return state;
+}
+
+void rd_recover(struct ReaderState *oldState) {
+    memcpy(&reader, oldState, sizeof(struct ReaderState));
+    free(oldState);
+}
+
 int rd_readChar() {
 
+    int read = 0;
     int index = reader.index++;
     int character = reader.frontBuffer[index];
 
@@ -40,8 +60,21 @@ int rd_readChar() {
         reader.backBuffer = aux;
 
         if (!reader.inPreviousBuffer) {
-            kdebug("> ");
-            int read = readString(reader.frontBuffer, BUFFER_SIZE - 1);
+            if (reader.file != FD_NULL) {
+
+                if (file_eof(reader.file))
+                    return EOF;
+
+                read = file_read(reader.file, reader.frontBuffer, BUFFER_SIZE - 1);
+
+            } else if (reader.file == FD_NULL) {
+                if (indentation == 0) {
+                    kdebug("> ");
+                } else {
+                    kdebug("%d > ", indentation);
+                }
+                read = readString(reader.frontBuffer, BUFFER_SIZE - 1);
+            }
             reader.frontBuffer[read] = '\0';
         } else {
             reader.inPreviousBuffer = 0;

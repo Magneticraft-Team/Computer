@@ -7,16 +7,48 @@
 #include "../include/object.h"
 #include "../include/functions.h"
 #include "../include/exception.h"
+#include "../include/token.h"
 
+char *tk_names[] = {
+        "IDENTIFIER",
+        "NUMBER",
+        "STRING",
+        "LEFT_PAREN",
+        "RIGHT_PAREN",
+        "QUOTE",
+        "QUASIQUOTE",
+        "KEYWORD",
+        "DOT",
+        "COMMA",
+        "EOF"
+};
+
+struct ParserState {
+    Token tk;
+    Boolean consumed;
+} parser;
+
+int indentation = 0;
 
 void pr_init() {
-    // ignore
+    parser.tk.type = TK_EOF;
+    parser.tk.name = "EOF";
+    parser.consumed = TRUE;
 }
 
-Object *readObj2(Token tk);
+struct ParserState *pr_save() {
+    struct ParserState *state = malloc(sizeof(struct ParserState));
+    memcpy(state, &parser, sizeof(struct ParserState));
+    pr_init();
+    return state;
+}
 
-Object *readObjList2(Token tk);
+void pr_recover(struct ParserState *oldState) {
+    memcpy(&parser, oldState, sizeof(struct ParserState));
+    free(oldState);
+}
 
+static Object *readObject();
 
 #ifndef ENV_DEBUG
 
@@ -57,53 +89,176 @@ long int strtol(const char *str, char **endptr, int base) {
 
 #endif
 
-Object *readObj() {
-    Token tk;
-    lx_nextToken(&tk);
-    return readObj2(tk);
-}
-
-Object *readObjList() {
-    Token tk;
-    lx_nextToken(&tk);
-    return readObjList2(tk);
-}
-
-Object *readObj2(Token tk) {
-    if (tk.type == TK_EOF) return NULL;
-    if (tk.type == TK_NUMBER) {
-        char *end;
-        return createNumber((int) strtol(tk.name, &end, 10));
+static void nextToken() {
+    if (parser.consumed) {
+        lx_nextToken(&parser.tk);
+        parser.consumed = FALSE;
     }
-    if (tk.type == TK_IDENTIFIER) return createSymbol(tk.name);
-    if (tk.type == TK_STRING) return createString(tk.name);
-
-    if (tk.type == TK_LEFT_PAREN) return readObjList();
-    if (tk.type == TK_QUOTE) {
-        Object *obj = readObj();
-        if (obj == NULL) return NULL;
-
-        return createCons(obj_quote, createCons(obj, obj_nil));
-    }
-    kdebug("Invalid Token: type = %d", tk.type);
-    THROW(EXCEPTION_INVALID_TOKEN);
-    return NULL;
 }
 
+void consumeToken() {
+    parser.consumed = TRUE;
+}
 
-Object *readObjList2(Token tk) {
-    if (tk.type == TK_EOF) return NULL;
-    if (tk.type == TK_RIGHT_PAREN) return obj_nil;
+void expectToken(TokenType type) {
+    consumeToken();
+    if (parser.tk.type != type) {
+        kdebug("Expected %s (%d), but found %s (%d)\n", tk_names[type], type, tk_names[parser.tk.type], parser.tk.type);
+        THROW(EXCEPTION_INVALID_TOKEN);
+    }
+}
 
-    Object *obj = readObj2(tk);
+static Boolean matchToken(TokenType type) {
+    if (parser.tk.type == type) {
+        consumeToken();
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static Boolean matchList() {
+    return matchToken(TK_LEFT_PAREN);
+}
+
+static Object *readList() {
+    indentation++;
+    nextToken();
+
+    if (matchToken(TK_RIGHT_PAREN)) {
+        indentation--;
+        return obj_nil;
+    }
+
+    Boolean dot = matchToken(TK_DOT);
+
+    Object *obj = readObject();
+    if (obj == NULL) {
+        indentation--;
+        return NULL;
+    }
+
+    if (dot) {
+        nextToken();
+        expectToken(TK_RIGHT_PAREN);
+        indentation--;
+        return obj;
+    } else {
+        indentation--;
+        Object *list = createCons(obj, readList());
+        return list;
+    }
+}
+
+static Boolean matchSymbol() {
+    return matchToken(TK_IDENTIFIER);
+}
+
+static Object *readSymbol() {
+    return createSymbol(parser.tk.name);
+}
+
+static Boolean matchKeyword() {
+    return matchToken(TK_KEYWORD);
+}
+
+static Object *readKeyword() {
+    return createKeyword(parser.tk.name);
+}
+
+static Boolean matchNumber() {
+    return matchToken(TK_NUMBER);
+}
+
+static Object *readNumber() {
+    return createNumber((int) strtol(parser.tk.name, &(char *) {0}, 10));
+}
+
+static Boolean matchString() {
+    return matchToken(TK_STRING);
+}
+
+static Object *readString() {
+    return createString(parser.tk.name);
+}
+
+static Boolean matchQuote() {
+    return matchToken(TK_QUOTE);
+}
+
+static Object *readQuotedObject() {
+    nextToken();
+
+    Object *obj = readObject();
     if (obj == NULL) return NULL;
 
-    Object *list = readObjList();
-    if (list == NULL) return NULL;
+    return createCons(obj_quote, createCons(obj, obj_nil));
+}
 
-    return createCons(obj, list);
+static Boolean matchMacro() {
+    return matchToken(TK_QUASIQUOTE);
+}
+
+static Object *readMacro() {
+    nextToken();
+
+    Object *obj = readObject();
+    if (obj == NULL) return NULL;
+
+    return createCons(obj_quasiquote, createCons(obj, obj_nil));
+}
+
+static Boolean matchUnquoted() {
+    return matchToken(TK_COMMA);
+}
+
+static Object *readUnquoted() {
+    nextToken();
+
+    Object *obj = readObject();
+    if (obj == NULL) return NULL;
+
+    return createCons(obj_unquote, createCons(obj, obj_nil));
+}
+
+static Object *readObject() {
+    nextToken();
+
+    if (matchList()) {
+        return readList();
+
+    } else if (matchKeyword()) {
+        return readKeyword();
+
+    } else if (matchSymbol()) {
+        return readSymbol();
+
+    } else if (matchNumber()) {
+        return readNumber();
+
+    } else if (matchString()) {
+        return readString();
+
+    } else if (matchQuote()) {
+        return readQuotedObject();
+
+    } else if (matchMacro()) {
+        return readMacro();
+
+    } else if (matchUnquoted()) {
+        return readUnquoted();
+
+    } else if (parser.tk.type == TK_EOF) {
+        return NULL;
+
+    } else {
+        consumeToken();
+        kdebug("Unexpected Token: %s (%d)\n", tk_names[parser.tk.type], parser.tk.type);
+        THROW(EXCEPTION_INVALID_TOKEN);
+        return NULL;
+    }
 }
 
 Object *pr_parse() {
-    return readObj();
+    indentation = 0;
+    return readObject();
 }

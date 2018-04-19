@@ -19,11 +19,13 @@ Object *callFunction(Object *func, Object *args, Object *env);
 
 Object *addArgsToEnv(Object *env, Object *syms, Object *vals);
 
-Object *assoc(Object *env, Object *key);
+Object *assoc(Object *key, Object *env);
 
 Object *eval(Object *code, Object *env);
 
 Object *evalList(Object *exps, Object *env);
+
+Object *expandMacro(Object *macro, Object *env);
 
 Object *extendEnv(Object *sym, Object *val);
 

@@ -9,6 +9,7 @@
 #include <glib/math.h>
 #include <ctype.h>
 #include <debug.h>
+#include <macros.h>
 
 #ifdef DEBUG_ENV
 #include <stdio.h>

@@ -8,7 +8,15 @@
 #include "lexer.h"
 #include "object.h"
 
+struct ParserState;
+
+extern int indentation;
+
 void pr_init();
+
+struct ParserState *pr_save();
+
+void pr_recover(struct ParserState *oldState);
 
 Object *pr_parse();
 

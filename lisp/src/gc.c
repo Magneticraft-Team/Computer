@@ -52,14 +52,26 @@ void mark(Object *obj) {
     if (chunk->meta.mark) return;
 
     chunk->meta.mark = 1;
+    if (obj->type == SYMBOL || obj->type == KEYWORD || obj->type == STRING ||
+        obj->type == NUMBER || obj->type == NATIVE_FUN) {
+        // Simple types without children
 
-    if (obj->type == CONS) {
+    } else if (obj->type == CONS) {
         mark(getFirst(obj));
         mark(getRest(obj));
+
     } else if (obj->type == FUNC) {
         mark(obj->code);
         mark(obj->args);
         mark(obj->env);
+
+    } else if (obj->type == MACRO) {
+        mark(obj->macro_code);
+        mark(obj->macro_args);
+        mark(obj->macro_env);
+
+    } else {
+        kdebug("Error unknown object type: (%d)\n", obj->type);
     }
 }
 

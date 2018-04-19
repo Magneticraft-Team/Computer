@@ -11,6 +11,8 @@
 #include <motherboard.h>
 #include <robot.h>
 #include <network.h>
+#include <macros.h>
+#include <util/cmd.h>
 #include "../include/dependencies.h"
 #include "../include/words.h"
 #include "../include/dictionary.h"
@@ -76,11 +78,11 @@ char wordBuffer[WORD_BUFFER_SIZE];
 char fileIOBuffer[BLOCK_BUFFER_SIZE];
 const char fileIOBufferEnd = 0;
 
-void readVariableAddress() {
+void readVariableAddress(void) {
     pushData((int) &currentWord->data[0]);
 }
 
-void readVariableValue() {
+void readVariableValue(void) {
     pushData(VALUE(currentWord));
 }
 
@@ -154,7 +156,7 @@ void printWord(Word *word) {
 }
 
 // DEBUG (--) name
-void fun_debug() {
+void fun_debug(void) {
     fun_minus_find();
     if (popData()) {
         Word *word = (Word *) popData();
@@ -168,7 +170,7 @@ void fun_debug() {
 /**************/
 
 // DUMP (addr size --)
-void fun_dump() {
+void fun_dump(void) {
     int size = popData();
     char *addr = (char *) popData();
     char *base, *end = addr + size, *aux;
@@ -219,48 +221,48 @@ void fun_dump() {
 }
 
 // CELLS (a -- b)  b = size of a cell * a
-void fun_cells() {
+void fun_cells(void) {
     pushData(popData() * 4);
 }
 
 // @ ( addr -- value )
-void fun_at() {
+void fun_at(void) {
     int *addr = (int *) popData();
     pushData(*addr);
 }
 
 // ! ( n addr -- )
-void fun_set() {
+void fun_set(void) {
     int *addr = (int *) popData();
     int value = popData();
     *addr = value;
 }
 
 // C@ ( addr -- value )
-void fun_c_at() {
+void fun_c_at(void) {
     char *addr = (char *) popData();
     pushData(*addr);
 }
 
 // C! ( n addr -- )
-void fun_c_set() {
+void fun_c_set(void) {
     char *addr = (char *) popData();
     char value = (char) popData();
     *addr = value;
 }
 
 // HERE
-void fun_here() {
+void fun_here(void) {
     pushData((int) dp);
 }
 
 // DP
-void fun_dp() {
+void fun_dp(void) {
     pushData((int) &dp);
 }
 
 // ALIGNW (--)
-void fun_align_word() {
+void fun_align_word(void) {
     dp = (char *) (((int) dp + 3) & (~3));
 }
 
@@ -269,38 +271,38 @@ void fun_align_word() {
 /************/
 
 // + (a b -- c) c = a + b
-void fun_plus() {
+void fun_plus(void) {
     pushData(popData() + popData());
 }
 
 // - (a b -- c) c = a - b
-void fun_minus() {
+void fun_minus(void) {
     int b = popData();
     int a = popData();
     pushData(a - b);
 }
 
 // * (a b -- c) c = a + b
-void fun_times() {
+void fun_times(void) {
     pushData(popData() * popData());
 }
 
 // / (a b -- c) c = a / b
-void fun_div() {
+void fun_div(void) {
     int b = popData();
     int a = popData();
     pushData(a / b);
 }
 
 // % (a b -- c) c = a % b
-void fun_mod() {
+void fun_mod(void) {
     int b = popData();
     int a = popData();
     pushData(a % b);
 }
 
 // = (a b -- c)
-void fun_equals() {
+void fun_equals(void) {
     int b = popData();
     int a = popData();
     pushData(a == b);
@@ -311,7 +313,7 @@ void fun_equals() {
 /*************************/
 
 // CREATE (--) name
-void fun_create() {
+void fun_create(void) {
 
     // Reads a word from input (name of the variable)
     pushData(*bl->data);
@@ -326,7 +328,7 @@ void fun_create() {
 }
 
 // , (n -- )
-void fun_comma() {
+void fun_comma(void) {
     int value = popData();
     fun_align_word();
     *(int *) dp = value;
@@ -334,7 +336,7 @@ void fun_comma() {
 }
 
 // VARIABLE (--)
-void fun_variable() {
+void fun_variable(void) {
     fun_create();
     Word *word = (Word *) popData();
     word->code = readVariableAddress;
@@ -343,7 +345,7 @@ void fun_variable() {
 }
 
 // CONSTANT (n -- )
-void fun_constant() {
+void fun_constant(void) {
     fun_create();
     Word *word = (Word *) popData();
     word->code = readVariableValue;
@@ -351,7 +353,7 @@ void fun_constant() {
 }
 
 // ' (--)
-void fun_quote() {
+void fun_quote(void) {
     pushData(*bl->data);
     fun_word();
     String *addr = (String *) popData();
@@ -361,19 +363,19 @@ void fun_quote() {
 }
 
 // >BODY (addr1 -- addr2)
-void fun_more_body() {
+void fun_more_body(void) {
     Word *word = (Word *) popData();
     pushData((int) word->data);
 }
 
 // >DOES (addr1 -- addr2)
-void fun_more_does() {
+void fun_more_does(void) {
     Word *word = (Word *) popData();
     pushData((int) word->code);
 }
 
 // LITERAL (n --)
-void fun_literal() {
+void fun_literal(void) {
     int value = popData();
     fun_align_word();
     *(int *) dp = (int) lit;
@@ -387,14 +389,14 @@ void fun_literal() {
 /*******************/
 
 // KEY (-- char)
-void fun_key() {
+void fun_key(void) {
     char buffer[2];
     readInput(buffer, 2);
     pushData(*buffer);
 }
 
 // READ
-void fun_read() {
+void fun_read(void) {
     char buffer[80];
     readInput(buffer, 80);
     createString(buffer);
@@ -402,28 +404,28 @@ void fun_read() {
 }
 
 // CR (--)
-void fun_cr() {
+void fun_cr(void) {
     kdebug("\n");
 }
 
 // PAGE (--)
-void fun_page() {
+void fun_page(void) {
     monitor_clear(motherboard_get_monitor());
 }
 
 // EMIT
-void fun_emit() {
+void fun_emit(void) {
     kdebug("%c", popData() & 0xFF);
 }
 
 // TYPE (--)
-void fun_type() {
+void fun_type(void) {
     String *str = (String *) popData();
     kdebug("%s", str);
 }
 
 // PRINT (--)
-void fun_print() {
+void fun_print(void) {
     char *str = (char *) popData();
     kdebug("%s\n", str);
 }
@@ -447,7 +449,7 @@ static int printNumber(int num, int base) {
 }
 
 // . ( a -- ) pop a value and prints it
-void fun_dot() {
+void fun_dot(void) {
     if (isDataStackEmpty()) {
         kdebug("Empty stack\n");
         fun_quit();
@@ -458,7 +460,7 @@ void fun_dot() {
 }
 
 // .S (--)  prints the stack
-void fun_dot_s() {
+void fun_dot_s(void) {
     int i;
     for (i = 0; i < dataStackPtr; i++) {
         printNumber(dataStack[i], *base->data);
@@ -467,7 +469,7 @@ void fun_dot_s() {
 }
 
 // WORDS (--)
-void fun_words() {
+void fun_words(void) {
     Word *word;
     for (word = dictionary; word != NULL; word = word->next) {
         kdebug("%s ", word->name);
@@ -475,7 +477,7 @@ void fun_words() {
 }
 
 // FREE (-- n)
-void fun_free() {
+void fun_free(void) {
     int totalRam = motherboard_get_memory_size();
     int ramWithoutStart = totalRam - ((int) dp);
     int stackSize = 0xffff - ((int) &totalRam);
@@ -485,7 +487,7 @@ void fun_free() {
 }
 
 // ABORT" (--)
-void fun_abort() {
+void fun_abort(void) {
     pushData('\"');
     fun_word();
     kdebug("%s ", ((String *) popData()));
@@ -493,7 +495,7 @@ void fun_abort() {
 }
 
 // ." (--)
-void fun_dot_quote() {
+void fun_dot_quote(void) {
     pushData('\"');
     fun_word();
     String *text = (String *) popData();
@@ -523,7 +525,7 @@ void fun_dot_quote() {
 }
 
 // (.") (--)
-void fun_int_dot_quote() {
+void fun_int_dot_quote(void) {
     char *str = (char *) (currentWordList->data + instructionOffset + 1);
     kdebug("%s", str);
     int countTest = strlen(str) + 1;
@@ -538,12 +540,12 @@ void fun_int_dot_quote() {
                     if(fs_getDevice() == -1){ kdebug("Disk not formatted\n"); return; } \
                     else { fs_init(motherboard_get_floppy_drive()); }
 
-int hasDisk() {
+int hasDisk(void) {
     return disk_drive_has_disk(motherboard_get_floppy_drive());
 }
 
 // BLOCK (n -- addr) n >= 1
-void fun_block() {
+void fun_block(void) {
     int block = popData();
 
     CHESK_FS();
@@ -582,7 +584,7 @@ void fun_block() {
 }
 
 // FLUSH (--)
-void fun_flush() {
+void fun_flush(void) {
     CHESK_FS();
 
     if (*fileWord->data == 0) {
@@ -597,7 +599,7 @@ void fun_flush() {
 }
 
 // LIST (n --)
-void fun_list() {
+void fun_list(void) {
     int block = popData();
     if (*currentBlock->data != block) {
         CHESK_FS();
@@ -625,7 +627,7 @@ void fun_list() {
 }
 
 // LOAD (n --)
-void fun_load() {
+void fun_load(void) {
     int block = popData();
     if (VALUE(currentBlock) != block) {
         CHESK_FS();
@@ -640,7 +642,7 @@ void fun_load() {
 }
 
 // WIPE (--)
-void fun_wipe() {
+void fun_wipe(void) {
     int block = *currentBlock->data;
     if (*currentBlock->data == 0) {
         CHESK_FS();
@@ -651,7 +653,7 @@ void fun_wipe() {
 }
 
 // PP (--)
-void fun_pp() {
+void fun_pp(void) {
     int line = popData();
     int block = *currentBlock->data;
     if (*currentBlock->data == 0) {
@@ -676,7 +678,7 @@ void fun_pp() {
 }
 
 // OPEN (--) name
-void fun_open() {
+void fun_open(void) {
     CHESK_FS();
 
     pushData(' ');
@@ -697,7 +699,7 @@ void fun_open() {
 }
 
 // CD (--) name
-void fun_cd() {
+void fun_cd(void) {
     CHESK_FS();
 
     pushData(' ');
@@ -705,24 +707,11 @@ void fun_cd() {
     String *name = (String *) popData();
     if (strlen(name) == 0) return;
 
-    INodeRef child = fs_findFile(*folderWord->data, name);
-    if (child == FS_NULL_INODE_REF) {
-        kdebug("Error %s doesn't exist\n", name);
-        return;
-    }
-    struct INode node;
-    fs_getINode(child, &node);
-    if (node.flags == FS_FLAG_DIRECTORY) {
-        *folderWord->data = child;
-        return;
-    } else {
-        kdebug("Error %s is not a folder\n", name);
-        return;
-    }
+    *folderWord->data = cmd_cd(*folderWord->data, name);
 }
 
 // MKFILE (--) name
-void fun_mkfile() {
+void fun_mkfile(void) {
     CHESK_FS();
 
     pushData(' ');
@@ -730,53 +719,30 @@ void fun_mkfile() {
     String *name = (String *) popData();
     if (strlen(name) == 0) return;
 
-    INodeRef res = fs_create(*folderWord->data, name, FS_FLAG_FILE);
-    if (res == FS_NULL_INODE_REF) {
-        kdebug("Error unable to create '%s'\n", name);
-    }
+    cmd_mkfile(*folderWord->data, name);
 }
 
 // MKDIR (--) name
-void fun_mkdir() {
-    if (!hasDisk()) {
-        kdebug("No disk\n");
-        return;
-    }
+void fun_mkdir(void) {
+    CHESK_FS();
 
     pushData(' ');
     fun_word();
     String *name = (String *) popData();
     if (strlen(name) == 0) return;
 
-    INodeRef res = fs_create(*folderWord->data, name, FS_FLAG_DIRECTORY);
-    if (res == FS_NULL_INODE_REF) {
-        kdebug("Error unable to create '%s'\n", name);
-    }
+    cmd_mkdir(*folderWord->data, name);
 }
 
 // LS (--)
-void fun_ls() {
+void fun_ls(void) {
     CHESK_FS();
 
-    struct DirectoryIterator iter;
-    struct INode node;
-
-    fs_iterInit(*folderWord->data, &iter);
-
-    while (fs_iterNext(&iter)) {
-        kdebug("%s", iter.entry.name);
-
-        // Check if is directory
-        fs_getINode(iter.entry.inode, &node);
-        if (node.flags == FS_FLAG_DIRECTORY) {
-            kdebug("/");
-        }
-        kdebug("\n");
-    }
+    cmd_ls(*folderWord->data);
 }
 
 // DELETE (--) name
-void fun_delete() {
+void fun_delete(void) {
     CHESK_FS();
 
     pushData(' ');
@@ -784,19 +750,10 @@ void fun_delete() {
     String *name = (String *) popData();
     if (strlen(name) == 0) return;
 
-    INodeRef child = fs_findFile(*folderWord->data, name);
-    if (child == FS_NULL_INODE_REF) {
-        kdebug("Error %s not found\n", name);
-        return;
-    }
-
-    if (fs_delete(*folderWord->data, child)) {
-        kdebug("Error unable to remove file '%s'\n", name);
-        return;
-    }
+    cmd_rm(*folderWord->data, name);
 }
 
-void fun_format() {
+void fun_format(void) {
     if (!hasDisk()) {
         kdebug("No disk!\n");
         return;
@@ -810,7 +767,7 @@ void fun_format() {
 /*********************************************************************************************************************/
 
 // SWAP (A B -- B A)
-void fun_swap() {
+void fun_swap(void) {
     int b = popData();
     int a = popData();
     pushData(b);
@@ -818,12 +775,12 @@ void fun_swap() {
 }
 
 // DUP (n -- n n)
-void fun_dup() {
+void fun_dup(void) {
     pushData(peekData());
 }
 
 // DROP (n --)
-void fun_drop() {
+void fun_drop(void) {
     popData();
 }
 
@@ -833,9 +790,9 @@ void fun_drop() {
 
 
 // EXIT (--)
-void fun_exit() {}
+void fun_exit(void) {}
 
-void fun_run_list() {
+void fun_run_list(void) {
     Word *word = currentWord;
     Word *next, *savedList = currentWordList;
     int saved = instructionOffset;
@@ -852,7 +809,7 @@ void fun_run_list() {
 }
 
 // ; (--)
-void fun_semi_colon() {
+void fun_semi_colon(void) {
     if (!(*state->data)) return;
     fun_align_word();
     *(int *) dp = (int) int_exit;
@@ -860,12 +817,12 @@ void fun_semi_colon() {
 }
 
 // LIT (-- n)
-void fun_lit() {
+void fun_lit(void) {
     pushData(currentWordList->data[++instructionOffset]);
 }
 
 // BRANCH? ( n --)
-void fun_q_branch() {
+void fun_q_branch(void) {
     int cond = popData();
     int jump = currentWordList->data[++instructionOffset];
     if (!cond) {
@@ -874,13 +831,13 @@ void fun_q_branch() {
 }
 
 // BRANCH (--)
-void fun_branch() {
+void fun_branch(void) {
     int jump = currentWordList->data[++instructionOffset];
     instructionOffset += jump;
 }
 
 // IF (n --)
-void fun_if() {
+void fun_if(void) {
     *(int *) dp = (int) branchQWord;
     dp += 4;// word addr
     pushR((int) dp);
@@ -888,7 +845,7 @@ void fun_if() {
 }
 
 // ELSE (--)
-void fun_else() {
+void fun_else(void) {
     int *jump = (int *) popR();
 
     *(int *) dp = (int) branchWord;
@@ -900,21 +857,21 @@ void fun_else() {
 }
 
 // THEN (--)
-void fun_then() {
+void fun_then(void) {
     int *jump = (int *) popR();
     int diff = ((int) dp) - ((int) jump);
     *jump = (diff / 4) - 1;
 }
 
 // DO (limit, index --)
-void fun_do() {
+void fun_do(void) {
     *(int *) dp = (int) doIntWord;
     dp += 4;// word addr
     pushR((int) dp);
 }
 
 // (DO) (limit, index --)
-void fun_int_do() {
+void fun_int_do(void) {
     int index = popData();
     int limit = popData();
 
@@ -923,7 +880,7 @@ void fun_int_do() {
 }
 
 // LOOP (--)
-void fun_loop() {
+void fun_loop(void) {
     int *jumpAddr = (int *) popR();
 
     int diff = ((int) dp) - ((int) jumpAddr);
@@ -936,7 +893,7 @@ void fun_loop() {
 }
 
 // (LOOP) (--)
-void fun_int_loop() {
+void fun_int_loop(void) {
     int index = popR();
     int limit = popR();
     int jump = currentWordList->data[++instructionOffset];
@@ -949,7 +906,7 @@ void fun_int_loop() {
 }
 
 // +LOOP (--)
-void fun_plus_loop() {
+void fun_plus_loop(void) {
     int *jumpAddr = (int *) popR();
 
     int diff = ((int) dp) - ((int) jumpAddr);
@@ -962,7 +919,7 @@ void fun_plus_loop() {
 }
 
 // (+LOOP) (n --)
-void fun_int_plus_loop() {
+void fun_int_plus_loop(void) {
     int inc = popData();
     int index = popR();
     int limit = popR();
@@ -976,13 +933,13 @@ void fun_int_plus_loop() {
 }
 
 // I (-- n)
-void fun_i() {
+void fun_i(void) {
     int index = peekR();
     pushData(index);
 }
 
 // J (-- n)
-void fun_j() {
+void fun_j(void) {
     int index = popR();
     int limit = popR();
     int superIndex = peekR();
@@ -992,12 +949,12 @@ void fun_j() {
 }
 
 // BEGIN (--)
-void fun_begin() {
+void fun_begin(void) {
     pushR((int) dp);
 }
 
 // UNTIL (n --)
-void fun_until() {
+void fun_until(void) {
     int *jumpAddr = (int *) popR();
     int diff = ((int) dp) - ((int) jumpAddr);
     int jump = -(diff / 4) - 2;
@@ -1009,7 +966,7 @@ void fun_until() {
 }
 
 // AGAIN (--)
-void fun_again() {
+void fun_again(void) {
     int *jumpAddr = (int *) popR();
     int diff = ((int) dp) - ((int) jumpAddr);
     int jump = -(diff / 4) - 2;
@@ -1037,17 +994,17 @@ void fun_again() {
 /*********************************************************************************************************************/
 
 // [ (--)
-void fun_open_bracket() {
+void fun_open_bracket(void) {
     *state->data = 0;
 }
 
 // ] (--)
-void fun_close_bracket() {
+void fun_close_bracket(void) {
     *state->data = 1;
 }
 
 // : (--)
-void fun_colon() {
+void fun_colon(void) {
     fun_create();
     Word *word = (Word *) popData();
     word->code = fun_run_list;
@@ -1100,7 +1057,7 @@ void fun_colon() {
 }
 
 // POSTPONE (--)
-void fun_postpone() {
+void fun_postpone(void) {
     fun_minus_find();
     int flag = popData();
     if (flag) {
@@ -1127,7 +1084,7 @@ void fun_postpone() {
 }
 
 // IMMEDIATE (--)
-void fun_immediate() {
+void fun_immediate(void) {
     Word *last = dictionary;
     while (last->next) {
         last = last->next;
@@ -1140,7 +1097,7 @@ void fun_immediate() {
 /*********************************************************************************************************************/
 
 // TICKS (n --)
-void fun_ticks() {
+void fun_ticks(void) {
     int ticks = popData();
     while (ticks > 0) {
         int sleep = MIN(ticks, 127);
@@ -1150,7 +1107,7 @@ void fun_ticks() {
 }
 
 // TIMES (n --) word
-void fun_times_run() {
+void fun_times_run(void) {
     int times = popData();
     fun_minus_find();
     int flag = popData();
@@ -1183,42 +1140,42 @@ static void robot_signal(int signal) {
 }
 
 // MINE (--)
-void fun_mine() {
+void fun_mine(void) {
     robot_signal(ROBOT_SIGNAL_MINE_BLOCK);
 }
 
 // FRONT or FORWARD (--)
-void fun_front() {
+void fun_front(void) {
     robot_signal(ROBOT_SIGNAL_MOVE_FORWARD);
 }
 
 // BACK (--)
-void fun_back() {
+void fun_back(void) {
     robot_signal(ROBOT_SIGNAL_MOVE_BACK);
 }
 
 // LEFT (--)
-void fun_left() {
+void fun_left(void) {
     robot_signal(ROBOT_SIGNAL_ROTATE_LEFT);
 }
 
 // RIGHT (--)
-void fun_right() {
+void fun_right(void) {
     robot_signal(ROBOT_SIGNAL_ROTATE_RIGHT);
 }
 
 // UP (--)
-void fun_up() {
+void fun_up(void) {
     robot_signal(ROBOT_SIGNAL_ROTATE_UP);
 }
 
 // DOWN (--)
-void fun_down() {
+void fun_down(void) {
     robot_signal(ROBOT_SIGNAL_ROTATE_DOWN);
 }
 
 // SCAN (--)
-void fun_scan() {
+void fun_scan(void) {
     if (robot == NULL) {
         kdebug("Unable to access mining robot API\n");
         return;
@@ -1233,7 +1190,7 @@ void fun_scan() {
 
 // (FIND) (StringAddr DictionaryAddr -- (wordAddr flags true) | false)
 // find word in dictionary
-void fun_int_find() {
+void fun_int_find(void) {
     Word *dict = (Word *) popData();
     String *name = (String *) popData();
     Word *res = findIn(dict, name);
@@ -1249,7 +1206,7 @@ void fun_int_find() {
 
 // WORD (charDelimiter -- StringAddr)
 // Read next token
-void fun_word() {
+void fun_word(void) {
     char delimiter = (char) popData();
     char *buffer, current;
     int size, offset = VALUE(moreIn), wordIndex;
@@ -1284,7 +1241,7 @@ void fun_word() {
 
 // FIND (StringAddr -- wordAddr, flag) flag = 1 | 0 | -1 (immediate | not found | not immediate)
 // Searchs a string in the dictionary and checks if is immediate
-void fun_find() {
+void fun_find(void) {
     String *name = (String *) popData();
     pushData((int) name);
     pushData((int) dictionary);
@@ -1301,7 +1258,7 @@ void fun_find() {
 
 // -FIND (-- addr flag) wordAddr 1 | 0
 // Read token from input and find if is in the dictionary
-void fun_minus_find() {
+void fun_minus_find(void) {
     // Use space as delimiter
     pushData(VALUE(bl));
     // Read token from input
@@ -1319,7 +1276,7 @@ void fun_minus_find() {
 }
 
 // QUIT (--)
-void fun_quit() {
+void fun_quit(void) {
     longjmp(onError, 1);
 }
 
@@ -1363,7 +1320,7 @@ long int strtol(const char *str, char **endptr, int base) {
 #endif
 
 // NUMBER? (StringAddr -- number flag) flag == 0  no number, flag == 1 valid number
-void fun_q_number() {
+void fun_q_number(void) {
     String *numString = (String *) popData();
     char *end = NULL;
 
@@ -1385,7 +1342,7 @@ void fun_q_number() {
 }
 
 // EXECUTE (addr -- )
-void fun_execute() {
+void fun_execute(void) {
     if (isDataStackEmpty()) {
         return;
     }
@@ -1404,7 +1361,7 @@ void fun_execute() {
 }
 
 // ?STACK (--)
-void fun_q_stack() {
+void fun_q_stack(void) {
     if (dataStackPtr < 0 || dataStackPtr > STACK_SIZE) {
         if (dataStackPtr < 0) {
             kdebug("Error: stack underflow (%d)\n", dataStackPtr);
@@ -1418,7 +1375,7 @@ void fun_q_stack() {
 }
 
 // INTERPRET (--)
-void fun_interpret() {
+void fun_interpret(void) {
     int isWord, isNumber;
     *state->data = 0;
 
@@ -1464,7 +1421,7 @@ void fun_interpret() {
 
 // EXPECT (bufferAddr bufferSize -- )
 // Read use input
-void fun_expect() {
+void fun_expect(void) {
     int size = popData();
     char *addr = (char *) popData();
     if (*state->data) {
@@ -1480,7 +1437,7 @@ void fun_expect() {
 
 // QUERY (--)
 // Fill TIB buffer with user input
-void fun_query() {
+void fun_query(void) {
     pushData((int) tib);
     pushData(TIB_SIZE);
     fun_expect();
@@ -1491,7 +1448,7 @@ void fun_query() {
 
 // FORTH (--)
 // Main loop
-void fun_forth() {
+void fun_forth(void) {
 
     if (setjmp(onError)) {
         *state->data = 0;
@@ -1502,7 +1459,7 @@ void fun_forth() {
     fun_interpret();
 }
 
-static void searchPeripherals() {
+static void searchPeripherals(void) {
     const struct device_header **a = motherboard_get_devices();
     networkCard = NULL;
     robot = NULL;
@@ -1518,7 +1475,7 @@ static void searchPeripherals() {
     }
 }
 
-void init() {
+void init(void) {
     searchPeripherals();
 
     // align dp to word boundaries
@@ -1593,9 +1550,9 @@ void init() {
     // Compiler internal
     int_exit = extendDictionary(createWord("EXIT", fun_exit));
     lit = extendDictionary(createWord("LIT", fun_lit));
+    int_dot_quote = extendDictionary(createWord("(.\")", fun_int_dot_quote));
     extendDictionary(createWord("ABORT\"", fun_abort));
     extendDictionary(createImmediateWord(".\"", fun_dot_quote));
-    int_dot_quote = extendDictionary(createWord("(.\")", fun_int_dot_quote));
 
     // Flow
     branchQWord = extendDictionary(createWord("BRANCH?", fun_q_branch));
@@ -1604,10 +1561,10 @@ void init() {
     extendDictionary(createImmediateWord("ELSE", fun_else));
     extendDictionary(createImmediateWord("THEN", fun_then));
     doIntWord = extendDictionary(createWord("(DO)", fun_int_do));
-    extendDictionary(createImmediateWord("DO", fun_do));
     loopIntWord = extendDictionary(createWord("(LOOP)", fun_int_loop));
-    extendDictionary(createImmediateWord("LOOP", fun_loop));
     plusLoopIntWord = extendDictionary(createWord("(+LOOP)", fun_int_plus_loop));
+    extendDictionary(createImmediateWord("DO", fun_do));
+    extendDictionary(createImmediateWord("LOOP", fun_loop));
     extendDictionary(createImmediateWord("+LOOP", fun_plus_loop));
     extendDictionary(createWord("I", fun_i));
     extendDictionary(createWord("J", fun_j));
@@ -1624,14 +1581,15 @@ void init() {
     // Disk IO
     fileWord = extendDictionary(createVariable("FILE", FS_NULL_INODE_REF));
     folderWord = extendDictionary(createVariable("FOLDER", fs_getRoot()));
-    extendDictionary(createWord("BLOCK", fun_block));
-    extendDictionary(createWord("LIST", fun_list));
-    extendDictionary(createWord("LOAD", fun_load));
-    extendDictionary(createWord("WIPE", fun_wipe));
-    extendDictionary(createWord("PP", fun_pp));
     extendDictionary(createWord("FLUSH", fun_flush));
-    extendDictionary(createWord("LS", fun_ls));
+    extendDictionary(createWord("WIPE", fun_wipe));
+    extendDictionary(createWord("LOAD", fun_load));
+    extendDictionary(createWord("LIST", fun_list));
+    extendDictionary(createWord("PP", fun_pp));
+    extendDictionary(createWord("BLOCK", fun_block));
     extendDictionary(createWord("OPEN", fun_open));
+
+    extendDictionary(createWord("LS", fun_ls));
     extendDictionary(createWord("MKDIR", fun_mkdir));
     extendDictionary(createWord("MKFILE", fun_mkfile));
     extendDictionary(createWord("CD", fun_cd));

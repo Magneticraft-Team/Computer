@@ -12,6 +12,10 @@ typedef enum {
     TK_LEFT_PAREN,
     TK_RIGHT_PAREN,
     TK_QUOTE,
+    TK_QUASIQUOTE,
+    TK_KEYWORD,
+    TK_DOT,
+    TK_COMMA,
     TK_EOF
 } TokenType;
 

@@ -5,7 +5,7 @@
 #include <motherboard.h>
 #include <fs/filesystem.h>
 #include <string.h>
-#include <glib/math.h>
+#include <macros.h>
 #include <fs/access.h>
 #include <util/bitmap.h>
 #include <debug.h>

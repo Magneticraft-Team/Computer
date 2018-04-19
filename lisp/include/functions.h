@@ -12,6 +12,8 @@ extern Object* obj_env;
 extern Object* obj_t;
 extern Object* obj_quote;
 extern Object* obj_progn;
+extern Object* obj_quasiquote;
+extern Object* obj_unquote;
 
 void fn_init();
 

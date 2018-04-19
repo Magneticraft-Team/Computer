@@ -5,8 +5,11 @@
 #ifndef UNTITLED_OBJECT_H
 #define UNTITLED_OBJECT_H
 
+#include <types.h>
+
 typedef enum {
     SYMBOL,
+    KEYWORD,
     NUMBER,
     STRING,
     CONS,
@@ -41,8 +44,9 @@ typedef struct Object {
         };
 
         struct {
-            struct Object *vars;
-            struct Object *template;
+            struct Object *macro_args;
+            struct Object *macro_code;
+            struct Object *macro_env;
         };
     };
 } Object;
@@ -52,6 +56,8 @@ typedef Object *(*NativeFunc)(Object *, Object *);
 // CONSTRUCTORS
 
 Object *createSymbol(const char *symbol);
+
+Object *createKeyword(const char *keyword);
 
 Object *createNumber(int value);
 
@@ -63,13 +69,17 @@ Object *createFun(Object *args, Object *code, Object *env);
 
 Object *createNativeFunc(NativeFunc func);
 
-Object *createMacro(Object* vars, Object* template);
+Object *createMacro(Object *args, Object *code, Object *env);
 
 Object *getFirst(Object *obj);
 
 Object *getRest(Object *obj);
 
 int getNumber(Object *obj);
+
+Object *getSymbol(Object *obj);
+
+String *getString(Object *obj);
 
 Object *getElem(Object *list, int index);
 

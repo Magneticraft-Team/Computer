@@ -8,8 +8,7 @@
 #include "../include/interpreter.h"
 #ifdef COMPUTER_ENV
 #include <util/malloc.h>
-// Memory sanbox
-char heap[1024 * 32];
+extern char *__end;
 #endif
 
 void main() {
@@ -17,7 +16,8 @@ void main() {
     kdebug("Lisp 2.0\n");
 
 #ifdef COMPUTER_ENV
-    initHeap(heap, sizeof(heap));
+    initHeap(&__end + 340, motherboard_get_memory_size() - (Int)(&__end + 340) - 1024);
+    fs_init(motherboard_get_floppy_drive());
 #endif
 
     rd_init();
