@@ -152,9 +152,9 @@ int kprint(const char *ptr, ...) {
                 sum += kprintun(va_arg(list, unsigned int), 16);
             } else if (ptr[i] == 'l') {
                 i++;
-                if (ptr[i + 1] == 'x') {
+                if (ptr[i] == 'x') {
                     sum += kprintun(va_arg(list, unsigned int), 16);
-                } else if (ptr[i + 1] == 'i' || ptr[i + 1] == 'd') {
+                } else if (ptr[i] == 'i' || ptr[i] == 'd') {
                     sum += kprintun(va_arg(list, unsigned int), 10);
                 }
             } else if (ptr[i] == 'o') {

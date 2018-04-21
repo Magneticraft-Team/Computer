@@ -10,10 +10,10 @@
 #include <monitor.h>
 #include <disk_drive.h>
 
-#include <glib/stdarg.h>
-#include <glib/string.h>
-#include <glib/ctype.h>
-#include <glib/setjmp.h>
-#include <glib/math.h>
+#include <stdarg.h>
+#include <string.h>
+#include <ctype.h>
+#include <setjmp.h>
+#include <math.h>
 
 #endif //COMPUTER_DEPENDENCIES_H

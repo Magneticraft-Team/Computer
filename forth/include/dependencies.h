@@ -5,6 +5,8 @@
 #ifndef FORTH_DEPENDENCIES_H
 #define FORTH_DEPENDENCIES_H
 
+#include <stddef.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>

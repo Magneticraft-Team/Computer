@@ -4,9 +4,9 @@
 
 #include "../include/stack.h"
 
-int dataStack[STACK_SIZE];
+Value dataStack[STACK_SIZE];
 int dataStackPtr = 0;
-int rStack[STACK_SIZE];
+Value rStack[STACK_SIZE];
 int rStackPtr = 0;
 
 void emptyDataStack(){
@@ -17,15 +17,15 @@ int isDataStackEmpty(){
     return dataStackPtr == 0;
 }
 
-void pushData(int data) {
+void pushData(Value data) {
     dataStack[dataStackPtr++] = data;
 }
 
-int popData() {
+Value popData() {
     return dataStack[--dataStackPtr];
 }
 
-int peekData() {
+Value peekData() {
     return dataStack[dataStackPtr - 1];
 }
 
@@ -37,14 +37,14 @@ int isRStackEmpty(){
     return rStackPtr == 0;
 }
 
-void pushR(int data) {
+void pushR(Value data) {
     rStack[rStackPtr++] = data;
 }
 
-int popR() {
+Value popR() {
     return rStack[--rStackPtr];
 }
 
-int peekR() {
+Value peekR() {
     return rStack[rStackPtr - 1];
 }

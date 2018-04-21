@@ -11,13 +11,15 @@
 #include <robot.h>
 #include <util/input.h>
 #include <base.h>
+#include <kprint.h>
+#include <malloc.h>
 #include "../include/functions.h"
 #include "../include/interpreter.h"
 #include "../include/exception.h"
 #include "../include/gc.h"
 
-#define CHESK_FS()  if(!hasDisk()){ kdebug("No disk\n"); return obj_nil; }                      \
-                    if(fs_getDevice() == -1){ kdebug("Disk not formatted\n"); return obj_nil; } \
+#define CHESK_FS()  if(!hasDisk()){ kprint("No disk\n"); return obj_nil; }                      \
+                    if(fs_getDevice() == -1){ kprint("Disk not formatted\n"); return obj_nil; } \
                     else { fs_init(motherboard_get_floppy_drive()); }
 
 Object *obj_nil = NULL;
@@ -30,6 +32,7 @@ Object *obj_unquote = NULL;
 Object *obj_folder = NULL;
 Object *obj_robot = NULL;
 Object *obj_help = NULL;
+Object *obj_ans = NULL;
 
 static Object *registerVariable(const char *name, Object *value) {
     Object *sym = createSymbol(name);
@@ -126,7 +129,7 @@ Object *f_debug(Object *lst, Object *env IGNORED) {
         return createCons(obj->macro_args, obj->macro_code);
     }
 
-    return obj_nil;
+    return obj;
 }
 
 Object *f_macro_expand(Object *lst, Object *env IGNORED) {
@@ -142,7 +145,7 @@ Object *f_define(Object *lst, Object *env) {
     Object *sym = getSymbol(getElem(lst, 0));
 
     if (assoc(sym, env) != obj_nil) {
-        kdebug("Symbol %s already defined\n", sym->name);
+        kprint("Symbol %s already defined\n", sym->name);
         THROW(EXCEPTION_SYMBOL_ALREADY_DEFINED);
         return obj_nil;
     }
@@ -163,7 +166,7 @@ Object *f_set(Object *lst, Object *env) {
 
     } else {
         if (symbolEquals(sym, obj_t) || symbolEquals(sym, obj_nil)) {
-            kdebug("Attempt to override the value of %s\n", sym->name);
+            kprint("Attempt to override the value of %s\n", sym->name);
             THROW(EXCEPTION_ILLEGAL_ACTION);
             return obj_nil;
         }
@@ -371,7 +374,7 @@ Object *f_div(Object *lst, Object *env) {
     int a = getNumber(getElem(args, 0));
     int b = getNumber(getElem(args, 1));
     if (b == 0) {
-        kdebug("Divided by zero\n");
+        kprint("Divided by zero\n");
         THROW(EXCEPTION_DIVIDED_BY_ZERO);
     }
     return createNumber(a / b);
@@ -382,7 +385,7 @@ Object *f_rem(Object *lst, Object *env) {
     int a = getNumber(getElem(args, 0));
     int b = getNumber(getElem(args, 1));
     if (b == 0) {
-        kdebug("Divided by zero\n");
+        kprint("Divided by zero\n");
         THROW(EXCEPTION_DIVIDED_BY_ZERO);
     }
     return createNumber(a % b);
@@ -454,14 +457,17 @@ Object *f_stringp(Object *lst, Object *env) {
     return (getElem(args, 0)->type == STRING) ? obj_t : obj_nil;
 }
 
-Object *f_evenp(Object *lst, Object *env) {
-    Object *args = evalList(lst, env);
-    return (getNumber(getElem(args, 0)) % 2 == 0) ? obj_t : obj_nil;
-}
+Object *f_times_loop(Object *lst, Object *env) {
+    // (dotimes 10 (println i))
+    Object *limit = eval(getFirst(lst), env);
 
-Object *f_oddp(Object *lst, Object *env) {
-    Object *args = evalList(lst, env);
-    return (getNumber(getElem(args, 0)) % 2 != 0) ? obj_t : obj_nil;
+    int times = getNumber(eval(limit, env));
+    Object *code = getRest(lst);
+
+    for (int i = 0; i < times; ++i) {
+        evalList(code, env);
+    }
+    return obj_nil;
 }
 
 Object *f_dotimes(Object *lst, Object *env) {
@@ -581,10 +587,10 @@ Object *f_println(Object *lst, Object *env) {
     Object *value = getFirst(args);
 
     if (value->type == STRING) {
-        kdebug("%s\n", getString(value));
+        kprint("%s\n", getString(value));
     } else {
         printObj(value);
-        kdebug("\n");
+        kprint("\n");
     }
     return obj_nil;
 }
@@ -594,7 +600,7 @@ Object *f_print(Object *lst, Object *env) {
     Object *value = getFirst(args);
 
     if (value->type == STRING) {
-        kdebug("%s", getString(value));
+        kprint("%s", getString(value));
     } else {
         printObj(value);
     }
@@ -615,7 +621,7 @@ Object *f_sleep(Object *lst, Object *env) {
 
 Object *f_format(Object *lst IGNORED, Object *env IGNORED) {
     if (!hasDisk()) {
-        kdebug("No disk!\n");
+        kprint("No disk!\n");
         return obj_nil;
     }
     fs_init(motherboard_get_floppy_drive());
@@ -676,7 +682,7 @@ Object *f_load(Object *lst, Object *env) {
 
     INodeRef child = fs_findFile(getFolder(env), name);
     if (child == FS_NULL_INODE_REF) {
-        kdebug("Error %s not found\n", name);
+        kprint("Error %s not found\n", name);
         return FALSE;
     }
 
@@ -693,7 +699,12 @@ Object *f_load(Object *lst, Object *env) {
     return obj_nil;
 }
 
-Object *f_forget(Object *lst IGNORED, Object *thisEnv) {
+
+Object *f_free(Object *lst IGNORED, Object *env IGNORED) {
+    return createNumber(gc_free());
+}
+
+Object *f_forget(Object *lst IGNORED, Object *thisEnv IGNORED) {
     Object *pair, *env = obj_env;
     while (env != obj_nil) {
         pair = getFirst(env);
@@ -743,33 +754,55 @@ Object *f_read(Object *lst, Object *env) {
     return str;
 }
 
-//Object *f_write_to_file(Object *lst, Object *env) {
-//    char line[78];
-//    int index = 0;
-//
-//    Object *args = evalList(lst, env);
-//    String *name = getString(getFirst(args));
-//    INodeRef folder = getFolder(env);
-//
-//    INodeRef file = fs_findFile(folder, name);
-//    if (file == FS_NULL_INODE_REF) {
-//        file = fs_create(folder, name, FS_FLAG_FILE);
-//        if (file == FS_NULL_INODE_REF) {
-//            kdebug("Error unable to create '%s'\n", name);
-//            return obj_nil;
-//        }
-//    }
-//
-//    fs_truncate(file, 0);
-//    kdebug("Type 'EOF' to exit\n");
-//    while (1) {
-//        kdebug(">>");
-//        readString(line, 78);
-//        if (strcmp(line, "EOF\n") == 0) return obj_nil;
-//        fs_write(file, line, index, (Int) strlen(line));
-//        index += strlen(line);
-//    }
-//}
+Object *f_write_to_file(Object *lst, Object *env) {
+    // (write-to-file "temp.txt" "Hello World")
+    Object *args = evalList(lst, env);
+    String *name = getString(getElem(args, 0));
+    String *content = getString(getElem(args, 1));
+
+    INodeRef folder = getFolder(env);
+
+    INodeRef file = fs_findFile(folder, name);
+    if (file == FS_NULL_INODE_REF) {
+        file = fs_create(folder, name, FS_FLAG_FILE);
+        if (file == FS_NULL_INODE_REF) {
+            kprint("Error unable to create '%s'\n", name);
+            return obj_nil;
+        }
+    }
+
+    fs_truncate(file, 0);
+    fs_write(file, content, 0, (Int) strlen(content));
+    return obj_t;
+}
+
+Object *f_read_from_file(Object *lst, Object *env) {
+    // (read-from-file "temp.txt")
+    Object *args = evalList(lst, env);
+    String *name = getString(getFirst(args));
+    INodeRef folder = getFolder(env);
+
+    INodeRef file = fs_findFile(folder, name);
+    if (file == FS_NULL_INODE_REF) {
+        kprint("Error unable to find '%s'\n", name);
+        return obj_nil;
+    }
+
+    struct INode node;
+    if (!fs_getINode(file, &node)) {
+        kprint("Error unable to access '%s'\n", name);
+        return obj_nil;
+    }
+
+    Byte *buffer = malloc((UInt) node.size);
+
+    fs_read(file, buffer, 0, node.size);
+    Object *str = createString(buffer);
+
+    free(buffer);
+    return str;
+}
+
 
 Object *f_str_to_hex(Object *lst, Object *env) {
     Object *args = evalList(lst, env);
@@ -879,7 +912,7 @@ Object *f_w8(Object *lst, Object *env) {
 MiningRobot *getMiningRobot(Object *env) {
     MiningRobot *robot = (MiningRobot *) getNumber(lookupSymbol(obj_robot, env));
     if (robot == NULL) {
-        kdebug("Unable to access mining robot API\n");
+        kprint("Unable to access mining robot API\n");
         THROW(EXCEPTION_ILLEGAL_ACTION);
     }
     return robot;
@@ -929,16 +962,16 @@ Object *f_scan(Object *lst IGNORED, Object *env) {
 }
 
 Object *f_help(Object *lst IGNORED, Object *env) {
-    kdebug("Avaliable commands: \n");
+    kprint("Avaliable commands: \n");
     for (Object *cons = env; cons != obj_nil; cons = getRest(cons)) {
         Object *pair = getFirst(cons);
 
         if (getFirst(pair) != obj_nil) {
             printObj(getFirst(pair));
-            kdebug(" ");
+            kprint(" ");
         }
     }
-    kdebug("\n");
+    kprint("\n");
     return obj_nil;
 }
 
@@ -952,6 +985,8 @@ void fn_init() {
     obj_progn = registerFunc("progn", f_progn);
     obj_quasiquote = registerFunc("quasiquote", f_quasiquote);
     obj_unquote = registerFunc("unquote", f_unquoted);
+    obj_ans = registerVariable("ans", obj_nil);
+
 
     registerFunc("eval", f_eval);
     registerFunc("debug", f_debug);
@@ -998,8 +1033,7 @@ void fn_init() {
     registerFunc("numberp", f_numberp);
     registerFunc("symbolp", f_symbolp);
     registerFunc("stringp", f_stringp);
-    registerFunc("evenp", f_evenp);
-    registerFunc("oddp", f_oddp);
+    registerFunc("times", f_times_loop);
     registerFunc("dotimes", f_dotimes);
     registerFunc("dolist", f_dolist);
     registerFunc("map", f_map);
@@ -1015,7 +1049,6 @@ void fn_init() {
     registerFunc("forget", f_forget);
     registerFunc("member", f_member);
     registerFunc("read", f_read);
-//    registerFunc("write-to-file", f_write_to_file);
 
     registerFunc("str-to-dec", f_str_to_dec); // "255" -> 255
     registerFunc("str-to-hex", f_str_to_hex); // "FF" -> 255
@@ -1046,6 +1079,11 @@ void fn_init() {
     registerFunc("mkdir", f_mkdir);
     registerFunc("mkfile", f_mkfile);
     registerFunc("load", f_load);
+
+    registerFunc("read-from-file", f_read_from_file);
+    registerFunc("write-to-file", f_write_to_file);
+
+    registerFunc("free", f_free);
 
     // this must be the last entry
     obj_help = registerFunc("help", f_help);

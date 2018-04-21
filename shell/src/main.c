@@ -6,16 +6,10 @@
 #include <debug.h>
 #include <motherboard.h>
 #include <fs/filesystem.h>
-#include <glib/ctype.h>
-#include <fs/access.h>
-#include <util/bitmap.h>
 #include <network.h>
-#include <string.h>
-#include <glib/math.h>
 #include <robot.h>
-#include <kprint.h>
+#include <util/input.h>
 #include "../include/input.h"
-#include "../include/quarry.h"
 #include "../include/commands.h"
 
 
@@ -74,6 +68,8 @@ void main() {
     state.fsInitialized = fs_getDevice() != -1;
     state.run = 1;
     monitor_clear(state.monitor);
+    kdebug("Shell 1.0\n");
+    kdebug("Type 'help' for available commands\n");
 
     while (state.run) {
         String input[78];
@@ -83,7 +79,7 @@ void main() {
         String arg3[78];
 
         kdebug("> ");
-        readInput(input, sizeof(input));
+        readString(input, sizeof(input));
         Int args = split(input, cmd, arg1, arg2, arg3);
         Int found = 0;
 

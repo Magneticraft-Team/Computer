@@ -1,10 +1,12 @@
 
 
 #include <string.h>
+#include <malloc.h>
 #include <assert.h>
 #include <util/input.h>
 #include <debug.h>
 #include <fs/file.h>
+#include <kprint.h>
 #include "../include/parser.h"
 
 #define BUFFER_SIZE (80-1)
@@ -69,9 +71,9 @@ int rd_readChar() {
 
             } else if (reader.file == FD_NULL) {
                 if (indentation == 0) {
-                    kdebug("> ");
+                    kprint("> ");
                 } else {
-                    kdebug("%d > ", indentation);
+                    kprint("%d > ", indentation);
                 }
                 read = readString(reader.frontBuffer, BUFFER_SIZE - 1);
             }

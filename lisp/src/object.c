@@ -4,6 +4,8 @@
 
 #include <debug.h>
 #include <stdarg.h>
+#include <string.h>
+#include <kprint.h>
 #include "../include/object.h"
 #include "../include/gc.h"
 #include "../include/functions.h"
@@ -28,11 +30,9 @@ Object *newObject(ObjectType type, int count, ...) {
     va_list ap;
     va_start(ap, count);
 
-//    kdebug("(%d) New Object: [%s]  \t", lastId, objectTypeNames[type]);
-
     ret = objAlloc();
     if (ret == 0) {
-        kdebug("Out of memory!\n");
+        kprint("Out of memory!\n");
         THROW(EXCEPTION_OUT_OF_MEMORY);
         return NULL;
     }
@@ -43,8 +43,6 @@ Object *newObject(ObjectType type, int count, ...) {
     for (i = 0; i < count; i++) {
         ret->raw[i] = va_arg(ap, Object *);
     }
-
-//    debugObj(ret);
 
     va_end(ap);
     return ret;
@@ -100,9 +98,9 @@ int getNumber(Object *obj) {
     if (obj->type == NUMBER) {
         return obj->number;
     } else {
-        kdebug("Not a number: ");
+        kprint("Not a number: ");
         printObj(obj);
-        kdebug("\n");
+        kprint("\n");
         THROW(EXCEPTION_CAST_TO_NUMBER_FAILED);
         return 0;
     }
@@ -112,9 +110,9 @@ Object *getSymbol(Object *obj) {
     if (obj->type == SYMBOL) {
         return obj;
     } else {
-        kdebug("Not a symbol: ");
+        kprint("Not a symbol: ");
         printObj(obj);
-        kdebug("\n");
+        kprint("\n");
         THROW(EXCEPTION_CAST_TO_SYMBOL_FAILED);
         return 0;
     }
@@ -124,22 +122,10 @@ String *getString(Object *obj) {
     if (obj->type == STRING) {
         return obj->name;
     } else {
-        kdebug("Not a string: ");
+        kprint("Not a string: ");
         printObj(obj);
-        kdebug("\n");
+        kprint("\n");
         THROW(EXCEPTION_CAST_TO_NUMBER_FAILED);
-        return 0;
-    }
-}
-
-String *getKeyword(Object *obj) {
-    if (obj->type == KEYWORD) {
-        return obj->name;
-    } else {
-        kdebug("Not a keyword: ");
-        printObj(obj);
-        kdebug("\n");
-        THROW(EXCEPTION_CAST_TO_KEYWORD_FAILED);
         return 0;
     }
 }
@@ -181,20 +167,20 @@ int symbolEquals(Object *a, Object *b) {
 }
 
 void debugObj(Object *obj) {
-    kdebug("Object(type=%s, id=%d", objectTypeNames[obj->type], obj->id);
+    kprint("Object(type=%s, id=%d", objectTypeNames[obj->type], obj->id);
     switch (obj->type) {
         case SYMBOL:
         case KEYWORD:
         case STRING:
-            kdebug(", name='%s'", obj->name);
+            kprint(", name='%s'", obj->name);
             break;
 
         case NUMBER:
-            kdebug(", value='%d'", obj->number);
+            kprint(", value='%d'", obj->number);
             break;
 
         case CONS:
-            kdebug(", car='%lx', cdr='%lx'", (long int) obj->car, (long int) obj->cdr);
+            kprint(", car='%lx', cdr='%lx'", (long int) obj->car, (long int) obj->cdr);
             break;
 
         case FUNC:
@@ -204,52 +190,52 @@ void debugObj(Object *obj) {
             break;
 
         case NATIVE_FUN:
-            kdebug(", func='%lx'", (unsigned long int) obj->function);
+            kprint(", func='%lx'", (unsigned long int) obj->function);
             break;
     }
-    kdebug(", addr = %lx)\n", (unsigned long int) obj);
+    kprint(", addr = 0x%lx)\n", (unsigned long int) obj);
 }
 
 void printObj(Object *obj) {
     switch (obj->type) {
         case SYMBOL:
         case KEYWORD:
-            kdebug("%s", obj->name);
+            kprint("%s", obj->name);
             break;
         case NUMBER:
-            kdebug("%d", obj->number);
+            kprint("%d", obj->number);
             break;
         case STRING:
-            kdebug("\"%s\"", obj->name);
+            kprint("\"%s\"", obj->name);
             break;
         case CONS:
-            kdebug("(");
+            kprint("(");
             for (;;) {
                 printObj(getFirst(obj));
                 if (getRest(obj) == obj_nil) {
-                    kdebug(")");
+                    kprint(")");
                     break;
                 }
                 obj = getRest(obj);
                 if (obj->type != CONS) {
-                    kdebug(" . ");
+                    kprint(" . ");
                     printObj(obj);
-                    kdebug(")");
+                    kprint(")");
                     break;
                 }
-                kdebug(" ");
+                kprint(" ");
             }
             break;
         case FUNC:
-            kdebug("func");
+            kprint("func");
             break;
         case NATIVE_FUN:
-            kdebug("native_func");
+            kprint("native_func");
             break;
         case MACRO:
-            kdebug("macro");
+            kprint("macro");
             break;
         default:
-            kdebug("corrupted (type: %d)", obj->type);
+            kprint("corrupted (type: %d)", obj->type);
     }
 }

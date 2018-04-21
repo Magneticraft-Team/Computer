@@ -5,6 +5,7 @@
 
 #include <debug.h>
 #include <glib/setjmp.h>
+#include <kprint.h>
 #include "../include/parser.h"
 #include "../include/interpreter.h"
 #include "../include/functions.h"
@@ -29,9 +30,11 @@ void in_run() {
 
             result = eval(obj, obj_env);
 
+            assoc(obj_ans, obj_env)->cdr = result;
+
             if (result != obj_nil) {
                 printObj(result);
-                kdebug("\n");
+                kprint("\n");
             }
         } CATCH {
             // No-op
@@ -41,12 +44,9 @@ void in_run() {
 }
 
 Object *eval(Object *exp, Object *env) {
-    Object *tmp, *proc, *args;
+    Object *proc, *args;
 
     if (exp == obj_nil) return obj_nil;
-
-//    printObj(exp);
-//    kdebug("\n");
 
     switch (exp->type) {
         case STRING:
@@ -72,9 +72,9 @@ Object *lookupSymbol(Object *sym, Object *env) {
     Object *tmp = assoc(sym, env);
 
     if (tmp == obj_nil) {
-        kdebug("Unbound symbol '");
+        kprint("Unbound symbol '");
         printObj(sym);
-        kdebug("'\n");
+        kprint("'\n");
 
         THROW(EXCEPTION_UNBOUND_SYMBOL);
         return obj_nil;
@@ -99,9 +99,9 @@ Object *callFunction(Object *func, Object *args, Object *env) {
         return eval(exp, newEnv);
     }
 
-    kdebug("Not a function: ");
+    kprint("Not a function: ");
     printObj(func);
-    kdebug("\n");
+    kprint("\n");
     THROW(EXCEPTION_NOT_A_FUNCTION);
     return obj_nil;
 }

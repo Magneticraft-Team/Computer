@@ -7,8 +7,9 @@
 #include <motherboard.h>
 #include <debug.h>
 #include <fs/filesystem.h>
-#include <string.h>
 #include <glib/math.h>
+#include <glib/string.h>
+#include <macros.h>
 
 static Monitor *monitor;
 static DiskDrive *floppyDrive;
@@ -28,15 +29,15 @@ void main() {
     monitor_clear(monitor);
 
     if (disk_drive_has_disk(floppyDrive)) {
-        kdebug("Loading...\n");
+        kprint("Loading...\n");
         if (loadOs()) {
-            kdebug("Jumping to boot...\n");
+            kprint("Jumping to boot...\n");
             asm volatile("jal 0");
         }
     } else {
-        kdebug("No floppy disk found\n");
+        kprint("No floppy disk found\n");
     }
-    kdebug("Halting cpu");
+    kprint("Halting cpu");
 }
 
 int isEmpty(char volatile *buff, int n) {
@@ -54,16 +55,16 @@ int loadOs() {
     if (fs_getDevice() != -1) {
         INodeRef boot = fs_findFile(fs_getRoot(), "boot.bin");
         if (boot != FS_NULL_INODE_REF) {
-            kdebug("Loading from boot.bin\n");
+            kprint("Loading from boot.bin\n");
             loaded = readFile(boot);
-            kdebug("Loaded %d sectors\n", loaded);
+            kprint("Loaded %d sectors\n", loaded);
             return loaded;
         }
     }
 
-    kdebug("Loading from disk...\n");
+    kprint("Loading from disk...\n");
     loaded = readDisk();
-    kdebug("Loaded %d sectors\n", loaded);
+    kprint("Loaded %d sectors\n", loaded);
     return loaded;
 }
 
@@ -73,8 +74,8 @@ int readDisk() {
     int i;
     int sectors = disk_drive_get_num_sectors(floppyDrive);
 
-    // limit program size to 36K
-    if (sectors > 36) sectors = 36;
+    // limit program size to 56K
+    if (sectors > 56) sectors = 56;
     int wasEmpty = 0;
 
     for (i = 0; i < sectors; ++i) {
@@ -85,7 +86,7 @@ int readDisk() {
 
         motherboard_sleep((Byte) disk_drive_get_access_time(floppyDrive));
 
-        memcpy(ptr + i * 1024, (const Ptr) buffer, 1024);
+        memcpy(ptr + i * 1024, (const void *) buffer, 1024);
         // stop at the second empty sector
         if (isEmpty(buffer, 1024)) {
             if (wasEmpty) break;

@@ -7,6 +7,10 @@
 
 #include "object.h"
 
+void gc_init();
+
+int gc_free();
+
 Object *objAlloc();
 
 char *strCopy(const char *src);

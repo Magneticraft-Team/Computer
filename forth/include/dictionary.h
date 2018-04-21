@@ -17,9 +17,9 @@ Word *newWord(String *name, Func function, int inmed, int count, ...);
 Word *createWord(const char *name, Func function);
 Word *createImmediateWord(const char *name, Func function);
 
-Word *createVariable(const char *name, int data);
+Word *createVariable(const char *name, Value data);
 
-Word *createConstant(const char *name, int data);
+Word *createConstant(const char *name, Value data);
 
 Word *extendDictionary(Word *word);
 

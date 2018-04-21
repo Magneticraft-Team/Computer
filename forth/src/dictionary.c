@@ -8,14 +8,15 @@
 #include "../include/words.h"
 
 #ifdef DEBUG_ENV
-char __end[64000];
+char __heap[64000];
+char *dp = __heap;
 #else
 extern char *__end;
+char *dp = (char *) &__end + 340;
 #endif
 
 Word *dictionary = NULL;
 
-char *dp = (char *) &__end + 340;
 
 String *createString(const String *src) {
     String *res = allot(strlen(src) + 1);
@@ -39,8 +40,8 @@ Word *newWord(String *name, Func function, int inmed, int count, ...) {
     word->next = NULL;
     word->code = function;
 
-    for (i = 0; i < count; i++) word->data[i] = va_arg(ap, int);
-    word->data[i] = 0;
+    for (i = 0; i < count; i++) word->data[i] = va_arg(ap, Value);
+    word->data[i] = (Value){0};
 
     va_end(ap);
     return word;

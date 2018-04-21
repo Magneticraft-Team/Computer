@@ -4,6 +4,7 @@
 #include <fs/filesystem.h>
 #include <debug.h>
 #include <fs/file.h>
+#include <util/input.h>
 #include "../include/dependencies.h"
 #include "../include/asm.h"
 #include "../include/read.h"
@@ -100,7 +101,7 @@ void main() {
 
     while (TRUE) {
         kdebug("> ");
-        readInput(buffer, 78);
+        readString(buffer, 78);
         String *input = strtok(buffer, " \n");
 
         if (input == NULL) {

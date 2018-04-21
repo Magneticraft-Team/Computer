@@ -13,6 +13,7 @@
 #include "base.h"
 
 #ifdef DEBUG_ENV
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

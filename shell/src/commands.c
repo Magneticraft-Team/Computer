@@ -13,6 +13,8 @@
 #include <glib/math.h>
 #include <robot.h>
 #include <kprint.h>
+#include <macros.h>
+#include <util/input.h>
 #include "../include/input.h"
 #include "../include/quarry.h"
 #include "../include/commands.h"
@@ -40,7 +42,6 @@ void f_help() {
         kdebug(" %s: { args: %d, usage: '%s'} \n", commands[i].name, commands[i].argCount, commands[i].usage);
         usageSize = MAX(usageSize, (Int) strlen(commands[i].usage));
     }
-    kdebug("[DEBUG] %d\n", usageSize);
 }
 
 void f_format() {
@@ -159,7 +160,7 @@ void f_write(ArgType name) {
     kdebug("Type 'EOF' to exit\n");
     while (1) {
         kdebug(">>");
-        readInput(line, 78);
+        readString(line, 78);
         if (strcmp(line, "EOF\n") == 0) return;
         fs_write(file, line, index, strlen(line));
         index += strlen(line);

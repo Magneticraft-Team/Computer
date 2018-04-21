@@ -12,8 +12,8 @@ extern int currentColumn;
 
 void initReader(FD srcFile);
 
-int readChar();
+int rd_readChar();
 
-void unreadChar(int character);
+void rd_unreadChar(int character);
 
 #endif //COMPUTER_READER_H

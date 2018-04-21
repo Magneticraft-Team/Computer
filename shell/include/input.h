@@ -7,8 +7,6 @@
 
 #include <types.h>
 
-void readInput(char *str, int n);
-
 Boolean parsetInt(String *str, Int *result);
 
 Int split(String *in, String *cmd, String *arg1, String *arg2, String *arg3);

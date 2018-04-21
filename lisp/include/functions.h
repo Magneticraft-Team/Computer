@@ -14,6 +14,7 @@ extern Object* obj_quote;
 extern Object* obj_progn;
 extern Object* obj_quasiquote;
 extern Object* obj_unquote;
+extern Object* obj_ans;
 
 void fn_init();
 

@@ -3,7 +3,7 @@
 .type _start, @function
 _start:
     # Sets the stack pointer
-    la $sp, 0xFFFC
+    la $sp, 0x1FFFC
     # jumps to main() in start.c
     jal main
 _shutdown:

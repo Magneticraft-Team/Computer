@@ -3,6 +3,9 @@
 //
 
 #include <debug.h>
+#include <kprint.h>
+#include <string.h>
+#include <malloc.h>
 #include "../include/lexer.h"
 #include "../include/object.h"
 #include "../include/functions.h"
@@ -103,7 +106,7 @@ void consumeToken() {
 void expectToken(TokenType type) {
     consumeToken();
     if (parser.tk.type != type) {
-        kdebug("Expected %s (%d), but found %s (%d)\n", tk_names[type], type, tk_names[parser.tk.type], parser.tk.type);
+        kprint("Expected %s (%d), but found %s (%d)\n", tk_names[type], type, tk_names[parser.tk.type], parser.tk.type);
         THROW(EXCEPTION_INVALID_TOKEN);
     }
 }
@@ -252,7 +255,7 @@ static Object *readObject() {
 
     } else {
         consumeToken();
-        kdebug("Unexpected Token: %s (%d)\n", tk_names[parser.tk.type], parser.tk.type);
+        kprint("Unexpected Token: %s (%d)\n", tk_names[parser.tk.type], parser.tk.type);
         THROW(EXCEPTION_INVALID_TOKEN);
         return NULL;
     }

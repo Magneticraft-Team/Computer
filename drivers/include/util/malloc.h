@@ -7,12 +7,12 @@
 #ifndef DRIVER_MALLOC_H
 #define DRIVER_MALLOC_H
 
-void free(Ptr ptr);
+void free(Any* ptr);
 
-Ptr malloc(UInt size);
+Any* malloc(UInt size);
 
-Ptr realloc(Ptr ptr, UInt size);
+Any* realloc(Any* ptr, UInt size);
 
-void initHeap(Ptr start, UInt size);
+void initHeap(Any* start, UInt size);
 
 #endif //DRIVER_MALLOC_H

@@ -5,29 +5,31 @@
 #ifndef MAGNETICRAFTCOMPUTER_STACK_H
 #define MAGNETICRAFTCOMPUTER_STACK_H
 
+#include "definitions.h"
+
 #define STACK_SIZE 128
 
 extern int dataStackPtr;
-extern int dataStack[STACK_SIZE];
+extern Value dataStack[STACK_SIZE];
 
 void emptyDataStack();
 
 int isDataStackEmpty();
 
-void pushData(int data);
+void pushData(Value data);
 
-int popData();
+Value popData();
 
-int peekData();
+Value peekData();
 
 void emptyRStack();
 
 int isRStackEmpty();
 
-void pushR(int data);
+void pushR(Value data);
 
-int popR();
+Value popR();
 
-int peekR();
+Value peekR();
 
 #endif //MAGNETICRAFTCOMPUTER_STACK_H

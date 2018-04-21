@@ -36,7 +36,7 @@ int readNumber(int charLook) {
         tokenNumberBase = 8;
 
         tokenBuffer[p++] = (char) charLook;
-        charLook = readChar();
+        charLook = rd_readChar();
 
         if (charLook == 'x') {
             // x is not added to tokenBuffer
@@ -47,11 +47,11 @@ int readNumber(int charLook) {
             validDigits = "0123456789abcdefABCDEF";
 
             //make sure we are still reading a number
-            charLook = readChar();
+            charLook = rd_readChar();
             if (charLook == -1 || !isxdigit(charLook)) {
 
                 tokenBuffer[p] = '\0';
-                unreadChar(charLook);
+                rd_unreadChar(charLook);
                 return TK_ERROR;
             }
         } else {
@@ -61,7 +61,7 @@ int readNumber(int charLook) {
 
             if (charLook == -1 || strchr(validDigits, charLook) == NULL) {
                 tokenBuffer[p] = '\0';
-                unreadChar(charLook);
+                rd_unreadChar(charLook);
                 return TK_NUMBER;
             }
         }
@@ -69,21 +69,21 @@ int readNumber(int charLook) {
 
     do {
         tokenBuffer[p++] = (char) charLook;
-        charLook = readChar();
+        charLook = rd_readChar();
     } while (strchr(validDigits, charLook) != NULL);
 
     tokenBuffer[p] = '\0';
-    unreadChar(charLook);
+    rd_unreadChar(charLook);
     return TK_NUMBER;
 }
 
 int scanToken() {
     int p = 0;
-    int charLook = readChar();
+    int charLook = rd_readChar();
 
     //trim
     while (isspace(charLook)) {
-        charLook = readChar();
+        charLook = rd_readChar();
         if (charLook == -1) {
             return TK_EOF;
         }
@@ -91,11 +91,11 @@ int scanToken() {
 
     if (charLook == '#') {
         while (charLook != '\n' && charLook != -1) {
-            charLook = readChar();
+            charLook = rd_readChar();
         }
         //trim
         while (isspace(charLook)) {
-            charLook = readChar();
+            charLook = rd_readChar();
             if (charLook == -1) {
                 return TK_EOF;
             }
@@ -106,10 +106,10 @@ int scanToken() {
     if (isalpha(charLook)) {
         do {
             tokenBuffer[p++] = (char) charLook;
-            charLook = readChar();
+            charLook = rd_readChar();
         } while (isalnum(charLook));
 
-        unreadChar(charLook);
+        rd_unreadChar(charLook);
         tokenBuffer[p] = '\0';
 
         for (int i = 0; keywords[i] != NULL; i++) {

@@ -23,7 +23,7 @@ void initReader(FD src) {
     inputBuffer[inputIndex] = '\0';
 }
 
-int readChar() {
+int rd_readChar() {
     int charRead;
 
     if (returnChar != -1) {
@@ -50,6 +50,6 @@ int readChar() {
     return charRead;
 }
 
-void unreadChar(int character) {
+void rd_unreadChar(int character) {
     returnChar = character;
 }

@@ -142,7 +142,7 @@ void lx_nextToken(Token *tk) {
         SYMBOL_CHAR_CASES() processSymbol(tk); break;
         case -1: fillToken(tk, TK_EOF, "EOF"); break;
         default: {
-            kdebug("Error unknown char: '%c' (%d)\n", lexer.character, lexer.character);
+            kprint("Error unknown char: '%c' (%d)\n", lexer.character, lexer.character);
             THROW(EXCEPTION_INVALID_CHAR);
         }
     }

@@ -18,6 +18,7 @@
 #include "../include/dictionary.h"
 #include "../include/stack.h"
 #include "../include/input.h"
+#include "../include/definitions.h"
 
 /*** VARIABLES ***/
 
@@ -79,7 +80,7 @@ char fileIOBuffer[BLOCK_BUFFER_SIZE];
 const char fileIOBufferEnd = 0;
 
 void readVariableAddress(void) {
-    pushData((int) &currentWord->data[0]);
+    pushData((Value) {&currentWord->data[0]});
 }
 
 void readVariableValue(void) {
@@ -126,14 +127,14 @@ void printWord(Word *word) {
         kdebug(", \nwords: [ ");
         Word *item;
         for (int i = 0;; ++i) {
-            item = (Word *) word->data[i];
+            item = word->data[i].word;
             if (item == lit) {
                 kdebug("LIT(%d) ", word->data[++i]);
             } else if (item == int_dot_quote) {
                 kdebug(".\"(");
                 char *str = (char *) (word->data + i + 1);
                 kdebug("%s", str);
-                int count = strlen(str) + 1;
+                int count = (int) (strlen(str) + 1);
                 i += byteToIntCeil(count);
                 kdebug(")");
             } else if (item == branchQWord) {
@@ -158,8 +159,8 @@ void printWord(Word *word) {
 // DEBUG (--) name
 void fun_debug(void) {
     fun_minus_find();
-    if (popData()) {
-        Word *word = (Word *) popData();
+    if (popData().i32) {
+        Word *word = popData().word;
         kdebug("\n");
         printWord(word);
     }
@@ -171,8 +172,8 @@ void fun_debug(void) {
 
 // DUMP (addr size --)
 void fun_dump(void) {
-    int size = popData();
-    char *addr = (char *) popData();
+    int size = popData().i32;
+    char *addr = popData().str;
     char *base, *end = addr + size, *aux;
     int i, j, lines = (size + 15) / 16;
 
@@ -222,7 +223,7 @@ void fun_dump(void) {
 
 // CELLS (a -- b)  b = size of a cell * a
 void fun_cells(void) {
-    pushData(popData() * 4);
+    pushData((Value){popData().i32 * 4});
 }
 
 // @ ( addr -- value )
@@ -263,7 +264,7 @@ void fun_dp(void) {
 
 // ALIGNW (--)
 void fun_align_word(void) {
-    dp = (char *) (((int) dp + 3) & (~3));
+    dp = (char *) (((long int) dp + 3) & (~3));
 }
 
 /************/
@@ -1422,8 +1423,8 @@ void fun_interpret(void) {
 // EXPECT (bufferAddr bufferSize -- )
 // Read use input
 void fun_expect(void) {
-    int size = popData();
-    char *addr = (char *) popData();
+    int size = popData().i32;
+    char *addr = popData().str;
     if (*state->data) {
         kdebug("compile: ");
     } else {

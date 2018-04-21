@@ -30,8 +30,8 @@ struct motherboard_header {
 /*  21 0x15 */    Byte logByte;             // Byte to print ot the minecraft log
 /*  22 0x16 */    Short logShort;           // Short to print ot the minecraft log
 /*  24 0x18 */    Int logInt;               // Int to print ot the minecraft log
-/*  28 0x1c */    const Ptr monitor;        // Address of the Monitor if there is one
-/*  32 0x20 */    const Ptr floppy;         // Address of the Floppy driver if there is one
+/*  28 0x1c */    const void *monitor;        // Address of the Monitor if there is one
+/*  32 0x20 */    const void *floppy;         // Address of the Floppy driver if there is one
 /*  36 0x24 */    const struct device_header *devices[MOTHERBOARD_MAX_DEVICES]; // Connected devices to this PC
 };
 
@@ -47,7 +47,7 @@ typedef struct motherboard_header Motherboard;
 #define MOTHERBOARD_LOG_TYPE_CHAR 3
 
 // Get the memory address where the motherboard is mapped
-Motherboard* motherboard_get_computer_motherboard();
+Motherboard *motherboard_get_computer_motherboard();
 
 // Send a signal to the motherboard, this is sync, no sleep needed
 void motherboard_signal(Int signal);

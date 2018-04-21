@@ -7,6 +7,18 @@
 
 #include "dependencies.h"
 
+struct word;
+
+typedef union {
+    int i32;
+    void *ptr;
+    short short int i8;
+    short int i16;
+    long int i64;
+    char *str;
+    struct word *word;
+} Value;
+
 typedef struct word {
     String *name;           // heap allocated
     uint8_t flags;          // immediate flag here instead on the name size
@@ -15,7 +27,7 @@ typedef struct word {
 
     void (*code)(void);     // function to execute for this word
 
-    int data[0];            // extra data
+    Value data[0];            // extra data
 } Word;
 
 typedef void (*Func)(void);

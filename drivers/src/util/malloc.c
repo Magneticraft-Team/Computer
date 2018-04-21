@@ -15,6 +15,8 @@
 
 #include <types.h>
 #include <string.h>
+#include <debug.h>
+#include <motherboard.h>
 
 #define WORD_ALIGN(x) ((((x) + 3) >> 2) << 2)
 
@@ -35,15 +37,18 @@ static struct {
 
 // Compacts the heap util it finds a empty cell with a size greater than the first argument, returns null otherwise
 Cell *compact(Int size) {
-    Cell *current = Heap.heapStart;
-    Cell *bestCell = current;
+    Cell *bestCell = Heap.heapStart;
+    Cell *current = bestCell;
     Int bestSize = 0;
+    Int count = 0;
 
     while (1) {
-        Int cellSize = current->size;
+        Int cellSize = WORD_ALIGN(current->size);
 
         // Reached end of heap
-        if (cellSize == 0) break;
+        if (cellSize == 0){
+            break;
+        }
 
         if (!current->used) {
             // if the cell is not used, add its space to the previous empty cell
@@ -61,10 +66,11 @@ Cell *compact(Int size) {
             }
             // Advance to the next cell
             bestSize = 0;
-            bestCell = (Cell *) ((Int) current + cellSize);
+            bestCell = (Cell *) ((Byte *) current + cellSize);
         }
         // Continue to the next cell
-        current = (Cell *) ((Int) current + cellSize);
+        current = (Cell *) ((Byte *) current + cellSize);
+        count++;
     }
 
     // Last check for the case when the empty cell is the last cell
@@ -82,16 +88,16 @@ Cell *compact(Int size) {
     return NULL;
 }
 
-void free(Ptr address) {
+void free(Any *address) {
     if (!address) return;
-    Cell *cell = (Cell *) ((UInt) address - sizeof(Cell));
+    Cell *cell = (Cell *) ((Byte *) address - sizeof(Cell));
     cell->used = 0;
 }
 
-Ptr malloc(UInt size) {
+Any *malloc(size_t size) {
     if (size == 0) return NULL;
     // Real size of the memory to alloc
-    Int toAlloc = WORD_ALIGN(size + sizeof(Cell));
+    Int toAlloc = (Int) WORD_ALIGN(size + sizeof(Cell));
 
     if (Heap.freeCell == NULL || Heap.freeCell->size < toAlloc) {
         Heap.freeCell = compact(toAlloc);
@@ -103,10 +109,10 @@ Ptr malloc(UInt size) {
     Cell *res = Heap.freeCell;
     Int cellSize = Heap.freeCell->size;
 
-    if ((UInt)cellSize >= toAlloc + sizeof(Cell)) {
+    if ((UInt) cellSize >= toAlloc + sizeof(Cell)) {
         // Enough space for this alloc and for a new cell
-        Heap.freeCell = (Cell *) ((Int) Heap.freeCell + toAlloc);
-        Heap.freeCell->size = cellSize - toAlloc;
+        Heap.freeCell = (Cell *) ((Byte *) Heap.freeCell + toAlloc);
+        Heap.freeCell->size = WORD_ALIGN(cellSize - toAlloc);
     } else {
         // Uses all space left
 
@@ -118,25 +124,25 @@ Ptr malloc(UInt size) {
 
     res->used = 1;
     res->size = toAlloc;
-    return (Ptr) ((Int) res + sizeof(Cell));
+    return (Any *) ((Byte *) res + sizeof(Cell));
 }
 
-Ptr realloc(Ptr ptr, UInt size){
-    if(ptr == NULL || size <= 0)
+Any *realloc(Any *ptr, size_t size) {
+    if (ptr == NULL || size <= 0)
         return ptr;
 
     // TODO make his efficient
-    Ptr new = malloc(size);
-    Cell *cell = (Cell *) ((UInt) ptr - sizeof(Cell));
+    Any *new = malloc(size);
+    Cell *cell = (Cell *) ((Byte *) ptr - sizeof(Cell));
 
     cell->used = 0;
-    memcpy(new, ptr, cell->size);
+    memcpy(new, ptr, (size_t) cell->size);
 
     return new;
 }
 
 // If size is not word aligned the size will be increased up to 3 bytes
-void initHeap(Ptr start, UInt size) {
+void initHeap(Any *start, UInt size) {
     UInt realSize = WORD_ALIGN(size);
     Heap.heapStart = Heap.freeCell = start;
     Heap.heapStart->used = Heap.freeCell->used = 0;
@@ -144,4 +150,5 @@ void initHeap(Ptr start, UInt size) {
 
     // Set last word to 0 , used to detect the end of the heap
     *(Int *) (start + realSize - sizeof(Cell)) = 0;
+
 }
