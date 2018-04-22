@@ -3,6 +3,8 @@
 //
 
 #include <debug.h>
+#include <kprint.h>
+#include <util/number_utils.h>
 #include "../include/parser.h"
 #include "../include/asm.h"
 #include "../include/lexer.h"
@@ -25,25 +27,23 @@ int identifierTableIndex = 0;
 IdentifierItem identifierTable[128];
 
 void printToken(int token) {
-    kdebug("Token: %d, (%s) ", token, tokenNames[token]);
+    kprint("Token: %d, (%s) ", token, tokenNames[token]);
     if (token == TK_NAME || token == TK_NUMBER) {
-        kdebug("'%s'", tokenBuffer);
+        kprint("'%s'", tokenBuffer);
     }
-    kdebug("\n");
+    kprint("\n");
 }
 
 int parseInt() {
     if (tokenLook == TK_NUMBER) {
-        int len = strlen(tokenBuffer);
-        char *end = NULL;
-        int value = strtol(tokenBuffer, &end, tokenNumberBase);
-        if (end != (tokenBuffer + len)) {
-            kdebug("[%d, %d] Error trying to parse integer: '%s'\n", currentLine, currentColumn, tokenBuffer);
+        int value = 0;
+        if (strToInt(tokenBuffer, tokenNumberBase, &value)) {
+            kprint("[%d, %d] Error trying to parse integer: '%s'\n", currentLine, currentColumn, tokenBuffer);
             longjmp(onError, 1);
         }
         return value;
     } else {
-        kdebug("[%d, %d] Unknown token trying to parse an integer: \n", currentLine, currentColumn);
+        kprint("[%d, %d] Unknown token trying to parse an integer: \n", currentLine, currentColumn);
         printToken(tokenLook);
         longjmp(onError, 1);
     }
@@ -52,9 +52,10 @@ int parseInt() {
 int parseRegister() {
     int num = -1;
     if (tokenLook == TK_NUMBER) {
-        num = atoi(tokenBuffer);
+
+        strToInt(tokenBuffer, 10, &num);
         if (num < 0 || num > 32) {
-            kdebug("[%d, %d] Unknown token trying to parse a register: \n", currentLine, currentColumn);
+            kprint("[%d, %d] Unknown token trying to parse a register: \n", currentLine, currentColumn);
             printToken(tokenLook);
             longjmp(onError, 1);
         }
@@ -66,12 +67,12 @@ int parseRegister() {
             }
         }
         if (num == -1) {
-            kdebug("[%d, %d] Unknown token trying to parse a register: \n", currentLine, currentColumn);
+            kprint("[%d, %d] Unknown token trying to parse a register: \n", currentLine, currentColumn);
             printToken(tokenLook);
             longjmp(onError, 1);
         }
     } else {
-        kdebug("[%d, %d] Unknown token trying to parse a register: \n", currentLine, currentColumn);
+        kprint("[%d, %d] Unknown token trying to parse a register: \n", currentLine, currentColumn);
         printToken(tokenLook);
         longjmp(onError, 1);
     }
@@ -153,20 +154,20 @@ void parse(int type, int code) {
                 }
             }
             if (i == identifierTableIndex) {
-                kdebug("[%d, %d] Unknown point to jump (%s)\n", currentLine, currentColumn, tokenBuffer);
-                kdebug("Valid points: ");
+                kprint("[%d, %d] Unknown point to jump (%s)\n", currentLine, currentColumn, tokenBuffer);
+                kprint("Valid points: ");
                 for (i = 0; i < identifierTableIndex; ++i) {
-                    kdebug("%s ", identifierTable[i].identifier);
+                    kprint("%s ", identifierTable[i].identifier);
                 }
-                putchar('\n');
+                kprint("\n");
                 longjmp(onError, 1);
 
             } else if (addr == -1) {
-                kdebug("[%d, %d] Invalid pointer to jump %x (%s)\n", currentLine, currentColumn, addr, tokenBuffer);
+                kprint("[%d, %d] Invalid pointer to jump %x (%s)\n", currentLine, currentColumn, addr, tokenBuffer);
                 longjmp(onError, 1);
             }
 #ifdef DEBUG
-            kdebug("addr 0x%08x, name: %s\n", addr, identifierTable[i].identifier);
+            kprint("addr 0x%08x, name: %s\n", addr, identifierTable[i].identifier);
 #endif
             compileJInstruction(code, addr);
             break;
@@ -370,7 +371,7 @@ void parseLine() {
 //            strcpy(item->identifier, tokenBuffer);
 //            item->index = codeBufferIndex;
 //#ifdef DEBUG
-//            kdebug("name = '%s', addr = %d\n", tokenBuffer, codeBufferIndex);
+//            kprint("name = '%s', addr = %d\n", tokenBuffer, codeBufferIndex);
 //#endif
 //            identifierTableIndex++;
             break;
@@ -381,8 +382,9 @@ void parseLine() {
             return;
         case TK_ERROR:
             longjmp(onError, 1);
+            break;
         default:
-            kdebug("[%d, %d] Unexpected token: ", currentLine, currentColumn);
+            kprint("[%d, %d] Unexpected token: ", currentLine, currentColumn);
             printToken(tokenLook);
     }
 }

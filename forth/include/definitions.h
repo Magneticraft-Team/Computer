@@ -10,9 +10,9 @@
 struct word;
 
 typedef union {
-    int i32;
     void *ptr;
-    short short int i8;
+    int i32;
+    char i8;
     short int i16;
     long int i64;
     char *str;

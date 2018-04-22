@@ -4,9 +4,15 @@
 
 #ifndef FORTH_DEPENDENCIES_H
 #define FORTH_DEPENDENCIES_H
+#ifdef DEBUG_ENV
 
-#include <stddef.h>
 #include <stdint.h>
+
+#else
+
+#include <glib/stddef.h>
+#endif
+
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>

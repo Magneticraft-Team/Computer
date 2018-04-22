@@ -6,6 +6,7 @@
 #include <kprint.h>
 #include <string.h>
 #include <malloc.h>
+#include <util/number_utils.h>
 #include "../include/lexer.h"
 #include "../include/object.h"
 #include "../include/functions.h"
@@ -52,45 +53,6 @@ void pr_recover(struct ParserState *oldState) {
 }
 
 static Object *readObject();
-
-#ifndef ENV_DEBUG
-
-long int strtol(const char *str, char **endptr, int base) {
-    long int acum = 0;
-    int pos = 0;
-    int sign = 1;
-
-    if (str[pos] == '-') {
-        sign = -1;
-        pos++;
-    } else if (str[pos] == '+') {
-        pos++;
-    }
-
-    while (str[pos] != '\0') {
-        int val;
-        if (str[pos] >= '0' && str[pos] <= '9') {
-            val = str[pos] - '0';
-        } else if (str[pos] >= 'a' && str[pos] <= 'z') {
-            val = str[pos] - 'a' + 10;
-        } else if (str[pos] >= 'A' && str[pos] <= 'Z') {
-            val = str[pos] - 'A' + 10;
-        } else {
-            val = -1;
-        }
-        if (val < 0 || val >= base) {
-            *endptr = (char *) &str[pos];
-            return acum;
-        }
-        acum = acum * base + val;
-        pos++;
-    }
-    *endptr = (char *) &str[pos];
-
-    return acum * sign;
-}
-
-#endif
 
 static void nextToken() {
     if (parser.consumed) {
@@ -173,7 +135,9 @@ static Boolean matchNumber() {
 }
 
 static Object *readNumber() {
-    return createNumber((int) strtol(parser.tk.name, &(char *) {0}, 10));
+    Int value = 0;
+    strToInt(parser.tk.name, 10, &value);
+    return createNumber(value);
 }
 
 static Boolean matchString() {

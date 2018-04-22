@@ -38,6 +38,5 @@ typedef unsigned int UInt;
 
 typedef Byte* ByteBuffer;
 typedef void Any;
-typedef void* Ptr;
 
 #endif //DRIVER_TYPES_H

@@ -13,18 +13,20 @@
 #include <network.h>
 #include <macros.h>
 #include <util/cmd.h>
+#include <util/number_utils.h>
+#include <util/input.h>
 #include "../include/dependencies.h"
 #include "../include/words.h"
 #include "../include/dictionary.h"
 #include "../include/stack.h"
-#include "../include/input.h"
-#include "../include/definitions.h"
 
 /*** VARIABLES ***/
 
 const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 #define VALUE(word) (*word->data)
+#define INT_VALUE(word) (*word->data).i32
+#define valueOf(something) ((Value){(void*)(something)})
 
 jmp_buf onError;
 
@@ -80,7 +82,7 @@ char fileIOBuffer[BLOCK_BUFFER_SIZE];
 const char fileIOBufferEnd = 0;
 
 void readVariableAddress(void) {
-    pushData((Value) {&currentWord->data[0]});
+    pushData(valueOf(&currentWord->data[0]));
 }
 
 void readVariableValue(void) {
@@ -223,43 +225,43 @@ void fun_dump(void) {
 
 // CELLS (a -- b)  b = size of a cell * a
 void fun_cells(void) {
-    pushData((Value){popData().i32 * 4});
+    pushData(valueOf(popData().i32 * 4));
 }
 
 // @ ( addr -- value )
 void fun_at(void) {
-    int *addr = (int *) popData();
-    pushData(*addr);
+    int *addr = popData().ptr;
+    pushData(valueOf(*addr));
 }
 
 // ! ( n addr -- )
 void fun_set(void) {
-    int *addr = (int *) popData();
-    int value = popData();
+    int *addr = popData().ptr;
+    int value = popData().i32;
     *addr = value;
 }
 
 // C@ ( addr -- value )
 void fun_c_at(void) {
-    char *addr = (char *) popData();
-    pushData(*addr);
+    char *addr = popData().str;
+    pushData(valueOf(*addr));
 }
 
 // C! ( n addr -- )
 void fun_c_set(void) {
-    char *addr = (char *) popData();
-    char value = (char) popData();
+    char *addr = popData().str;
+    char value = popData().i8;
     *addr = value;
 }
 
 // HERE
 void fun_here(void) {
-    pushData((int) dp);
+    pushData(valueOf(dp));
 }
 
 // DP
 void fun_dp(void) {
-    pushData((int) &dp);
+    pushData(valueOf(&dp));
 }
 
 // ALIGNW (--)
@@ -273,40 +275,44 @@ void fun_align_word(void) {
 
 // + (a b -- c) c = a + b
 void fun_plus(void) {
-    pushData(popData() + popData());
+    Value b = popData();
+    Value a = popData();
+    pushData(valueOf(a.i32 + b.i32));
 }
 
 // - (a b -- c) c = a - b
 void fun_minus(void) {
-    int b = popData();
-    int a = popData();
-    pushData(a - b);
+    Value b = popData();
+    Value a = popData();
+    pushData(valueOf(a.i32 - b.i32));
 }
 
 // * (a b -- c) c = a + b
 void fun_times(void) {
-    pushData(popData() * popData());
+    Value b = popData();
+    Value a = popData();
+    pushData(valueOf(a.i32 * b.i32));
 }
 
 // / (a b -- c) c = a / b
 void fun_div(void) {
-    int b = popData();
-    int a = popData();
-    pushData(a / b);
+    Value b = popData();
+    Value a = popData();
+    pushData(valueOf(a.i32 / b.i32));
 }
 
 // % (a b -- c) c = a % b
 void fun_mod(void) {
-    int b = popData();
-    int a = popData();
-    pushData(a % b);
+    Value b = popData();
+    Value a = popData();
+    pushData(valueOf(a.i32 % b.i32));
 }
 
 // = (a b -- c)
 void fun_equals(void) {
-    int b = popData();
-    int a = popData();
-    pushData(a == b);
+    Value b = popData();
+    Value a = popData();
+    pushData(valueOf(a.ptr == b.ptr));
 }
 
 /*************************/
@@ -319,18 +325,18 @@ void fun_create(void) {
     // Reads a word from input (name of the variable)
     pushData(*bl->data);
     fun_word();
-    String *addr = (String *) popData();
+    String *addr = popData().str;
 
     String *name = createString(addr);
     Word *word = newWord(name, NULL, 0, 0);
 
     extendDictionary(word);
-    pushData((int) word);
+    pushData(valueOf(word));
 }
 
 // , (n -- )
 void fun_comma(void) {
-    int value = popData();
+    int value = popData().i32;
     fun_align_word();
     *(int *) dp = value;
     dp += 4;
@@ -339,16 +345,16 @@ void fun_comma(void) {
 // VARIABLE (--)
 void fun_variable(void) {
     fun_create();
-    Word *word = (Word *) popData();
+    Word *word = popData().word;
     word->code = readVariableAddress;
-    pushData(0);
+    pushData(valueOf(0));
     fun_comma();
 }
 
 // CONSTANT (n -- )
 void fun_constant(void) {
     fun_create();
-    Word *word = (Word *) popData();
+    Word *word = popData().word;
     word->code = readVariableValue;
     fun_comma();
 }
@@ -357,27 +363,27 @@ void fun_constant(void) {
 void fun_quote(void) {
     pushData(*bl->data);
     fun_word();
-    String *addr = (String *) popData();
+    String *addr = popData().str;
 
     Word *word = findIn(dictionary, addr);
-    pushData((int) word);
+    pushData(valueOf(word));
 }
 
 // >BODY (addr1 -- addr2)
 void fun_more_body(void) {
-    Word *word = (Word *) popData();
-    pushData((int) word->data);
+    Word *word = popData().word;
+    pushData(valueOf(word->data));
 }
 
 // >DOES (addr1 -- addr2)
 void fun_more_does(void) {
-    Word *word = (Word *) popData();
-    pushData((int) word->code);
+    Word *word = popData().word;
+    pushData(valueOf(word->code));
 }
 
 // LITERAL (n --)
 void fun_literal(void) {
-    int value = popData();
+    int value = popData().i32;
     fun_align_word();
     *(int *) dp = (int) lit;
     dp += 4;
@@ -392,16 +398,16 @@ void fun_literal(void) {
 // KEY (-- char)
 void fun_key(void) {
     char buffer[2];
-    readInput(buffer, 2);
-    pushData(*buffer);
+    readString(buffer, 2);
+    pushData(valueOf(*buffer));
 }
 
 // READ
 void fun_read(void) {
     char buffer[80];
-    readInput(buffer, 80);
+    readString(buffer, 80);
     createString(buffer);
-    pushData((int) createString(buffer));
+    pushData(valueOf(createString(buffer)));
 }
 
 // CR (--)
@@ -416,18 +422,18 @@ void fun_page(void) {
 
 // EMIT
 void fun_emit(void) {
-    kdebug("%c", popData() & 0xFF);
+    kdebug("%c", popData().i8);
 }
 
 // TYPE (--)
 void fun_type(void) {
-    String *str = (String *) popData();
+    String *str = popData().str;
     kdebug("%s", str);
 }
 
 // PRINT (--)
 void fun_print(void) {
-    char *str = (char *) popData();
+    char *str = popData().str;
     kdebug("%s\n", str);
 }
 
@@ -455,7 +461,7 @@ void fun_dot(void) {
         kdebug("Empty stack\n");
         fun_quit();
     } else {
-        printNumber(popData(), *base->data);
+        printNumber(popData().i32, INT_VALUE(base));
         kdebug(" ");
     }
 }
@@ -464,7 +470,7 @@ void fun_dot(void) {
 void fun_dot_s(void) {
     int i;
     for (i = 0; i < dataStackPtr; i++) {
-        printNumber(dataStack[i], *base->data);
+        printNumber(dataStack[i].i32, INT_VALUE(base));
         kdebug(" ");
     }
 }
@@ -480,35 +486,32 @@ void fun_words(void) {
 // FREE (-- n)
 void fun_free(void) {
     int totalRam = motherboard_get_memory_size();
-    int ramWithoutStart = totalRam - ((int) dp);
-    int stackSize = 0xffff - ((int) &totalRam);
-
-    int freeRam = ramWithoutStart - stackSize;
-    pushData(freeRam);
+    int freeRam = totalRam - ((int) dp) - 1024 * 4;
+    pushData(valueOf(freeRam));
 }
 
 // ABORT" (--)
 void fun_abort(void) {
-    pushData('\"');
+    pushData(valueOf('\"'));
     fun_word();
-    kdebug("%s ", ((String *) popData()));
+    kdebug("%s ", popData().str);
     fun_quit();
 }
 
 // ." (--)
 void fun_dot_quote(void) {
-    pushData('\"');
+    pushData(valueOf('\"'));
     fun_word();
-    String *text = (String *) popData();
-    int size = strlen(text);
+    String *text = popData().str;
+    int size = (int) strlen(text);
     if (size == 0) {
         return;
     }
 
     // scape the " char
-    VALUE(moreIn)++;
+    INT_VALUE(moreIn)++;
 
-    if (*state->data) {
+    if (INT_VALUE(state)) {
         *(int *) dp = (int) int_dot_quote;
         dp += 4;
 
@@ -529,7 +532,7 @@ void fun_dot_quote(void) {
 void fun_int_dot_quote(void) {
     char *str = (char *) (currentWordList->data + instructionOffset + 1);
     kdebug("%s", str);
-    int countTest = strlen(str) + 1;
+    int countTest = (int) (strlen(str) + 1);
     instructionOffset += byteToIntCeil(countTest);
 }
 
@@ -547,12 +550,12 @@ int hasDisk(void) {
 
 // BLOCK (n -- addr) n >= 1
 void fun_block(void) {
-    int block = popData();
+    int block = popData().i32;
 
     CHESK_FS();
 
-    if (*fileWord->data == FS_NULL_INODE_REF) {
-        INodeRef folder = *folderWord->data;
+    if (INT_VALUE(fileWord) == FS_NULL_INODE_REF) {
+        INodeRef folder = INT_VALUE(folderWord);
         INodeRef file = fs_findFile(folder, "forth.txt");
 
         if (file == FS_NULL_INODE_REF) {
@@ -565,55 +568,57 @@ void fun_block(void) {
         } else {
             kdebug("Opening file: forth.txt\n");
         }
-        *fileWord->data = file;
+        INT_VALUE(fileWord) = file;
     }
 
-    if (*currentBlock->data != 0 && *currentBlock->data != block) {
+    if (INT_VALUE(currentBlock) != 0 && INT_VALUE(currentBlock) != block) {
         kdebug("Saving old block: %d\n", *currentBlock->data);
         // save old block
-        fs_write(*fileWord->data, fileIOBuffer, (*currentBlock->data - 1) * BLOCK_BUFFER_SIZE, BLOCK_BUFFER_SIZE);
+        fs_write(INT_VALUE(fileWord), fileIOBuffer, (INT_VALUE(currentBlock) - 1) * BLOCK_BUFFER_SIZE,
+                 BLOCK_BUFFER_SIZE);
     }
 
-    *currentBlock->data = block;
-    int read = fs_read(*fileWord->data, fileIOBuffer, (*currentBlock->data - 1) * BLOCK_BUFFER_SIZE, BLOCK_BUFFER_SIZE);
+    INT_VALUE(currentBlock) = block;
+    int read = fs_read(INT_VALUE(fileWord), fileIOBuffer, (INT_VALUE(currentBlock) - 1) * BLOCK_BUFFER_SIZE,
+                       BLOCK_BUFFER_SIZE);
 
     // fill remaining bytes with 0
     for (int i = read; i < BLOCK_BUFFER_SIZE; ++i) {
         fileIOBuffer[i] = 0;
     }
-    pushData((int) fileIOBuffer);
+    pushData(valueOf(fileIOBuffer));
 }
 
 // FLUSH (--)
 void fun_flush(void) {
     CHESK_FS();
 
-    if (*fileWord->data == 0) {
+    if (INT_VALUE(fileWord) == 0) {
         kdebug("No file loaded\n");
         return;
     }
 
-    int writen = fs_write(*fileWord->data,
-                          fileIOBuffer, (*currentBlock->data - 1) * BLOCK_BUFFER_SIZE, BLOCK_BUFFER_SIZE);
+    int writen = fs_write(INT_VALUE(fileWord), fileIOBuffer, (INT_VALUE(currentBlock) - 1) * BLOCK_BUFFER_SIZE,
+                          BLOCK_BUFFER_SIZE);
 
     kdebug("Writen %d bytes\n", writen);
 }
 
 // LIST (n --)
 void fun_list(void) {
-    int block = popData();
-    if (*currentBlock->data != block) {
+    int block = popData().i32;
+    if (INT_VALUE(currentBlock) != block) {
         CHESK_FS();
-        pushData(block);
+        pushData(valueOf(block));
         fun_block();
-        if (popData() == 0) {
+        if (popData().i32 == 0) {
             return;
         }
     }
 
     for (int i = 0; i < 16; ++i) {
-        kdebug("%c", digits[i / *base->data]);
-        kdebug("%c", digits[i % *base->data]);
+        kdebug("%c", digits[i / INT_VALUE(base)]);
+        kdebug("%c", digits[i % INT_VALUE(base)]);
         kdebug(" ");
         for (int j = 0; j < 64; ++j) {
             char c = fileIOBuffer[i * 64 + j];
@@ -629,25 +634,25 @@ void fun_list(void) {
 
 // LOAD (n --)
 void fun_load(void) {
-    int block = popData();
-    if (VALUE(currentBlock) != block) {
+    int block = popData().i32;
+    if (INT_VALUE(currentBlock) != block) {
         CHESK_FS();
-        pushData(block);
+        pushData(valueOf(block));
         fun_block();
         popData();
     }
-    *blk->data = block;
-    *moreIn->data = 0;
-    *span->data = strlen(fileIOBuffer);
+    INT_VALUE(blk) = block;
+    INT_VALUE(moreIn) = 0;
+    INT_VALUE(span) = (int) strlen(fileIOBuffer);
     fun_interpret();
 }
 
 // WIPE (--)
 void fun_wipe(void) {
-    int block = *currentBlock->data;
-    if (*currentBlock->data == 0) {
+    int block = INT_VALUE(currentBlock);
+    if (block == 0) {
         CHESK_FS();
-        pushData(block);
+        pushData(valueOf(block));
         fun_block();
     }
     memset(fileIOBuffer, ' ', 1024);
@@ -655,11 +660,11 @@ void fun_wipe(void) {
 
 // PP (--)
 void fun_pp(void) {
-    int line = popData();
-    int block = *currentBlock->data;
-    if (*currentBlock->data == 0) {
+    int line = popData().i32;
+    int block = INT_VALUE(currentBlock);
+    if (block == 0) {
         CHESK_FS();
-        pushData(block);
+        pushData(valueOf(block));
         fun_block();
     }
 
@@ -668,13 +673,13 @@ void fun_pp(void) {
         return;
     }
 
-    int totalSize = *hashTib->data;
-    int alreadyRead = *moreIn->data + 1;
+    int totalSize = INT_VALUE(hashTib);
+    int alreadyRead = INT_VALUE(moreIn) + 1;
     int size = totalSize - alreadyRead;
     if (size > 0) {
         memset(fileIOBuffer + line * 64, ' ', 64);
         memcpy(fileIOBuffer + line * 64, tib + alreadyRead, (size_t) size);
-        *moreIn->data += size + 1;
+        INT_VALUE(moreIn) += size + 1;
     }
 }
 
@@ -682,76 +687,76 @@ void fun_pp(void) {
 void fun_open(void) {
     CHESK_FS();
 
-    pushData(' ');
+    pushData(valueOf(' '));
     fun_word();
-    String *name = (String *) popData();
+    String *name = popData().str;
     if (strlen(name) == 0) {
         kdebug("Invalid file name\n");
         return;
     }
 
-    INodeRef file = fs_findFile(*folderWord->data, name);
+    INodeRef file = fs_findFile(INT_VALUE(fileWord), name);
     if (file != FS_NULL_INODE_REF) {
-        *fileWord->data = file;
+        VALUE(fileWord) = valueOf(file);
     } else {
         kdebug("File not found: '%s'\n", name);
     }
-    *currentBlock->data = 0;
+    INT_VALUE(currentBlock) = 0;
 }
 
 // CD (--) name
 void fun_cd(void) {
     CHESK_FS();
 
-    pushData(' ');
+    pushData(valueOf(' '));
     fun_word();
-    String *name = (String *) popData();
+    String *name = popData().str;
     if (strlen(name) == 0) return;
 
-    *folderWord->data = cmd_cd(*folderWord->data, name);
+    INT_VALUE(folderWord) = cmd_cd(INT_VALUE(folderWord), name);
 }
 
 // MKFILE (--) name
 void fun_mkfile(void) {
     CHESK_FS();
 
-    pushData(' ');
+    pushData(valueOf(' '));
     fun_word();
-    String *name = (String *) popData();
+    String *name = popData().str;
     if (strlen(name) == 0) return;
 
-    cmd_mkfile(*folderWord->data, name);
+    cmd_mkfile(INT_VALUE(folderWord), name);
 }
 
 // MKDIR (--) name
 void fun_mkdir(void) {
     CHESK_FS();
 
-    pushData(' ');
+    pushData(valueOf(' '));
     fun_word();
-    String *name = (String *) popData();
+    String *name = popData().str;
     if (strlen(name) == 0) return;
 
-    cmd_mkdir(*folderWord->data, name);
+    cmd_mkdir(INT_VALUE(folderWord), name);
 }
 
 // LS (--)
 void fun_ls(void) {
     CHESK_FS();
 
-    cmd_ls(*folderWord->data);
+    cmd_ls(INT_VALUE(folderWord));
 }
 
 // DELETE (--) name
 void fun_delete(void) {
     CHESK_FS();
 
-    pushData(' ');
+    pushData(valueOf(' '));
     fun_word();
-    String *name = (String *) popData();
+    String *name = popData().str;
     if (strlen(name) == 0) return;
 
-    cmd_rm(*folderWord->data, name);
+    cmd_rm(INT_VALUE(folderWord), name);
 }
 
 void fun_format(void) {
@@ -769,8 +774,8 @@ void fun_format(void) {
 
 // SWAP (A B -- B A)
 void fun_swap(void) {
-    int b = popData();
-    int a = popData();
+    Value b = popData();
+    Value a = popData();
     pushData(b);
     pushData(a);
 }
@@ -800,8 +805,8 @@ void fun_run_list(void) {
 
     currentWordList = currentWord;
     for (instructionOffset = 0;; instructionOffset++) {
-        next = (Word *) word->data[instructionOffset];
-        pushData((int) next);
+        next = word->data[instructionOffset].word;
+        pushData(valueOf(next));
         fun_execute();
         if (next == int_exit) break;
     }
@@ -811,7 +816,7 @@ void fun_run_list(void) {
 
 // ; (--)
 void fun_semi_colon(void) {
-    if (!(*state->data)) return;
+    if (!INT_VALUE(state)) return;
     fun_align_word();
     *(int *) dp = (int) int_exit;
     dp += 4;
@@ -824,8 +829,8 @@ void fun_lit(void) {
 
 // BRANCH? ( n --)
 void fun_q_branch(void) {
-    int cond = popData();
-    int jump = currentWordList->data[++instructionOffset];
+    int cond = popData().i32;
+    int jump = currentWordList->data[++instructionOffset].i32;
     if (!cond) {
         instructionOffset += jump;
     }
@@ -833,7 +838,7 @@ void fun_q_branch(void) {
 
 // BRANCH (--)
 void fun_branch(void) {
-    int jump = currentWordList->data[++instructionOffset];
+    int jump = currentWordList->data[++instructionOffset].i32;
     instructionOffset += jump;
 }
 
@@ -841,17 +846,17 @@ void fun_branch(void) {
 void fun_if(void) {
     *(int *) dp = (int) branchQWord;
     dp += 4;// word addr
-    pushR((int) dp);
+    pushR(valueOf(dp));
     dp += 4; //jump addr
 }
 
 // ELSE (--)
 void fun_else(void) {
-    int *jump = (int *) popR();
+    int *jump = popR().ptr;
 
     *(int *) dp = (int) branchWord;
     dp += 4;// word addr
-    pushR((int) dp);
+    pushR(valueOf(dp));
     dp += 4; //jump addr
     int diff = ((int) dp) - ((int) jump);
     *jump = (diff / 4) - 1;
@@ -859,7 +864,7 @@ void fun_else(void) {
 
 // THEN (--)
 void fun_then(void) {
-    int *jump = (int *) popR();
+    int *jump = popR().ptr;
     int diff = ((int) dp) - ((int) jump);
     *jump = (diff / 4) - 1;
 }
@@ -868,21 +873,21 @@ void fun_then(void) {
 void fun_do(void) {
     *(int *) dp = (int) doIntWord;
     dp += 4;// word addr
-    pushR((int) dp);
+    pushR(valueOf(dp));
 }
 
 // (DO) (limit, index --)
 void fun_int_do(void) {
-    int index = popData();
-    int limit = popData();
+    int index = popData().i32;
+    int limit = popData().i32;
 
-    pushR(limit);
-    pushR(index);
+    pushR(valueOf(limit));
+    pushR(valueOf(index));
 }
 
 // LOOP (--)
 void fun_loop(void) {
-    int *jumpAddr = (int *) popR();
+    int *jumpAddr = popR().ptr;
 
     int diff = ((int) dp) - ((int) jumpAddr);
     int jump = -(diff / 4) - 2;
@@ -895,20 +900,20 @@ void fun_loop(void) {
 
 // (LOOP) (--)
 void fun_int_loop(void) {
-    int index = popR();
-    int limit = popR();
-    int jump = currentWordList->data[++instructionOffset];
+    int index = popR().i32;
+    int limit = popR().i32;
+    int jump = currentWordList->data[++instructionOffset].i32;
 
     if (index < limit - 1) {
-        pushR(limit);
-        pushR(index + 1);
+        pushR(valueOf(limit));
+        pushR(valueOf(index + 1));
         instructionOffset += jump;
     }
 }
 
 // +LOOP (--)
 void fun_plus_loop(void) {
-    int *jumpAddr = (int *) popR();
+    int *jumpAddr = popR().ptr;
 
     int diff = ((int) dp) - ((int) jumpAddr);
     int jump = -(diff / 4) - 2;
@@ -921,42 +926,42 @@ void fun_plus_loop(void) {
 
 // (+LOOP) (n --)
 void fun_int_plus_loop(void) {
-    int inc = popData();
-    int index = popR();
-    int limit = popR();
-    int jump = currentWordList->data[++instructionOffset];
+    int inc = popData().i32;
+    int index = popR().i32;
+    int limit = popR().i32;
+    int jump = currentWordList->data[++instructionOffset].i32;
 
     if (index < limit - 1) {
-        pushR(limit);
-        pushR(index + inc);
+        pushR(valueOf(limit));
+        pushR(valueOf(index + inc));
         instructionOffset += jump;
     }
 }
 
 // I (-- n)
 void fun_i(void) {
-    int index = peekR();
-    pushData(index);
+    int index = peekR().i32;
+    pushData(valueOf(index));
 }
 
 // J (-- n)
 void fun_j(void) {
-    int index = popR();
-    int limit = popR();
-    int superIndex = peekR();
-    pushR(limit);
-    pushR(index);
-    pushData(superIndex);
+    int index = popR().i32;
+    int limit = popR().i32;
+    int superIndex = peekR().i32;
+    pushR(valueOf(limit));
+    pushR(valueOf(index));
+    pushData(valueOf(superIndex));
 }
 
 // BEGIN (--)
 void fun_begin(void) {
-    pushR((int) dp);
+    pushR(valueOf(dp));
 }
 
 // UNTIL (n --)
 void fun_until(void) {
-    int *jumpAddr = (int *) popR();
+    int *jumpAddr = popR().ptr;
     int diff = ((int) dp) - ((int) jumpAddr);
     int jump = -(diff / 4) - 2;
 
@@ -968,7 +973,7 @@ void fun_until(void) {
 
 // AGAIN (--)
 void fun_again(void) {
-    int *jumpAddr = (int *) popR();
+    int *jumpAddr = popR().ptr;
     int diff = ((int) dp) - ((int) jumpAddr);
     int jump = -(diff / 4) - 2;
 
@@ -996,27 +1001,27 @@ void fun_again(void) {
 
 // [ (--)
 void fun_open_bracket(void) {
-    *state->data = 0;
+    VALUE(state) = valueOf(0);
 }
 
 // ] (--)
 void fun_close_bracket(void) {
-    *state->data = 1;
+    VALUE(state) = valueOf(1);
 }
 
 // : (--)
 void fun_colon(void) {
     fun_create();
-    Word *word = (Word *) popData();
+    Word *word = popData().word;
     word->code = fun_run_list;
-    *state->data = 1;
+    VALUE(state) = valueOf(1);
 
     while (1) {
         fun_minus_find();
-        int flag = popData();
+        int flag = popData().i32;
 
         if (flag) {
-            Word *toRun = (Word *) peekData();
+            Word *toRun = peekData().word;
             if (flag == 1) {
                 fun_execute();
                 if (toRun == semi_colon) {
@@ -1026,26 +1031,26 @@ void fun_colon(void) {
                 fun_comma();
             }
         } else {
-            String *name = (String *) popData();
+            String *name = popData().str;
 
             if (strlen(name) == 0) {
                 fun_query();
                 continue;
             }
 
-            pushData((int) name);
+            pushData(valueOf(name));
             fun_q_number(); // (StringAddr -- number flag)
-            int numFlag = popData();
+            int numFlag = popData().i32;
             if (numFlag) {
                 fun_literal();
             } else {
-                if (popData() == -1) {
+                if (popData().i32 == -1) {
                     kdebug("Invalid symbol: '%s'\n", name);
                     emptyDataStack();
                     emptyRStack();
                     fun_quit();
                 } else {
-                    if (*span->data != 0) {
+                    if (INT_VALUE(span) != 0) {
                         kdebug("ok\n");
                     }
                     break;
@@ -1054,13 +1059,13 @@ void fun_colon(void) {
         }
         fun_q_stack();
     }
-    *state->data = 0;
+    VALUE(state) = valueOf(0);
 }
 
 // POSTPONE (--)
 void fun_postpone(void) {
     fun_minus_find();
-    int flag = popData();
+    int flag = popData().i32;
     if (flag) {
 //        Word *toRun = (Word *) peekData();
         if (flag == 1) {
@@ -1099,7 +1104,7 @@ void fun_immediate(void) {
 
 // TICKS (n --)
 void fun_ticks(void) {
-    int ticks = popData();
+    int ticks = popData().i32;
     while (ticks > 0) {
         int sleep = MIN(ticks, 127);
         ticks -= sleep;
@@ -1109,13 +1114,13 @@ void fun_ticks(void) {
 
 // TIMES (n --) word
 void fun_times_run(void) {
-    int times = popData();
+    int times = popData().i32;
     fun_minus_find();
-    int flag = popData();
+    int flag = popData().i32;
     if (flag) {
-        int addrs = popData();
+        Word *addrs = popData().word;
         for (int i = 0; i < times; ++i) {
-            pushData(addrs);
+            pushData(valueOf(addrs));
             fun_execute();
         }
     } else {
@@ -1137,7 +1142,7 @@ static void robot_signal(int signal) {
         return;
     }
 
-    pushData(mining_robot_signal(robot, signal));
+    pushData(valueOf(mining_robot_signal(robot, signal)));
 }
 
 // MINE (--)
@@ -1182,7 +1187,7 @@ void fun_scan(void) {
         return;
     }
 
-    pushData(mining_robot_scan(robot));
+    pushData(valueOf(mining_robot_scan(robot)));
 }
 
 /*********************************************************************************************************************/
@@ -1192,28 +1197,28 @@ void fun_scan(void) {
 // (FIND) (StringAddr DictionaryAddr -- (wordAddr flags true) | false)
 // find word in dictionary
 void fun_int_find(void) {
-    Word *dict = (Word *) popData();
-    String *name = (String *) popData();
+    Word *dict = popData().word;
+    String *name = popData().str;
     Word *res = findIn(dict, name);
 
     if (res == NULL) {
-        pushData(0);
+        pushData(valueOf(0));
     } else {
-        pushData((int) res);
-        pushData(res->flags | strlen(res->name));
-        pushData(1);
+        pushData(valueOf(res));
+        pushData(valueOf((res->flags | strlen(res->name))));
+        pushData(valueOf(1));
     }
 }
 
 // WORD (charDelimiter -- StringAddr)
 // Read next token
 void fun_word(void) {
-    char delimiter = (char) popData();
+    char delimiter = popData().i8;
     char *buffer, current;
-    int size, offset = VALUE(moreIn), wordIndex;
+    int size, offset = INT_VALUE(moreIn), wordIndex;
 
     // Select input source
-    if (*blk->data == 0) {
+    if (INT_VALUE(blk) == 0) {
         // Terminal/Monitor
         buffer = tib;
         size = TIB_SIZE;
@@ -1236,24 +1241,24 @@ void fun_word(void) {
     }
     wordBuffer[wordIndex] = '\0';
 
-    VALUE(moreIn) = offset;
-    pushData((int) wordBuffer);
+    VALUE(moreIn) = valueOf(offset);
+    pushData(valueOf(wordBuffer));
 }
 
 // FIND (StringAddr -- wordAddr, flag) flag = 1 | 0 | -1 (immediate | not found | not immediate)
 // Searchs a string in the dictionary and checks if is immediate
 void fun_find(void) {
-    String *name = (String *) popData();
-    pushData((int) name);
-    pushData((int) dictionary);
+    String *name = popData().str;
+    pushData(valueOf(name));
+    pushData(valueOf(dictionary));
     fun_int_find();
-    int result = popData();
-    if (result) {
-        int flags = popData();
-        pushData((flags & IMMEDIATE_BIT_MASK) > 0 ? 1 : -1);
+
+    if (popData().i32) {
+        int flags = popData().i32;
+        pushData(valueOf((flags & IMMEDIATE_BIT_MASK) > 0 ? 1 : -1));
     } else {
-        pushData((int) name);
-        pushData(0);
+        pushData(valueOf(name));
+        pushData(valueOf(0));
     }
 }
 
@@ -1265,10 +1270,10 @@ void fun_minus_find(void) {
     // Read token from input
     fun_word();
 
-    if (strlen((const char *) peekData()) == 0) {
+    if (strlen(peekData().str) == 0) {
 
         // if token is empty, it doesn't need to search
-        pushData(0);
+        pushData(valueOf(0));
     } else {
 
         // Search command with same name
@@ -1281,64 +1286,23 @@ void fun_quit(void) {
     longjmp(onError, 1);
 }
 
-#ifndef ENV_DEBUG
-
-long int strtol(const char *str, char **endptr, int base) {
-    long int acum = 0;
-    int pos = 0;
-    int sign = 1;
-
-    if (str[pos] == '-') {
-        sign = -1;
-        pos++;
-    } else if (str[pos] == '+') {
-        pos++;
-    }
-
-    while (str[pos] != '\0') {
-        int val;
-        if (str[pos] >= '0' && str[pos] <= '9') {
-            val = str[pos] - '0';
-        } else if (str[pos] >= 'a' && str[pos] <= 'z') {
-            val = str[pos] - 'a' + 10;
-        } else if (str[pos] >= 'A' && str[pos] <= 'Z') {
-            val = str[pos] - 'A' + 10;
-        } else {
-            val = -1;
-        }
-        if (val < 0 || val >= base) {
-            *endptr = (char *) &str[pos];
-            return acum;
-        }
-        acum = acum * base + val;
-        pos++;
-    }
-    *endptr = (char *) &str[pos];
-
-    return acum * sign;
-}
-
-#endif
-
 // NUMBER? (StringAddr -- number flag) flag == 0  no number, flag == 1 valid number
 void fun_q_number(void) {
-    String *numString = (String *) popData();
-    char *end = NULL;
+    String *numString = popData().str;
 
     if (strlen(numString) == 0) {
-        pushData(0);
-        pushData(0);
+        pushData(valueOf(0));
+        pushData(valueOf(0));
         return;
     }
 
-    int num = strtol(numString, &end, VALUE(base));
-
-    if (end != (numString + strlen(numString))) {
-        pushData(-1);
-        pushData(0);
+    int num = 0;
+    if (strToInt(numString, INT_VALUE(base), &num)) {
+        pushData(valueOf(num));
+        pushData(valueOf(1));
     } else {
-        pushData(num);
-        pushData(1);
+        pushData(valueOf(-1));
+        pushData(valueOf(0));
     }
 }
 
@@ -1347,7 +1311,7 @@ void fun_execute(void) {
     if (isDataStackEmpty()) {
         return;
     }
-    Word *w = (Word *) popData();
+    Word *w = popData().word;
     if (w == NULL) {
         return;
     }
@@ -1378,13 +1342,13 @@ void fun_q_stack(void) {
 // INTERPRET (--)
 void fun_interpret(void) {
     int isWord, isNumber;
-    *state->data = 0;
+    INT_VALUE(state) = 0;
 
     while (1) {
 
         // read token and search in dictionary
         fun_minus_find();
-        isWord = popData();
+        isWord = popData().i32;
 
         if (isWord) {
             // the toke was a words, it gets executed
@@ -1393,19 +1357,19 @@ void fun_interpret(void) {
             continue;
         }
 
-        String *token = (String *) peekData();
+        String *token = peekData().str;
         // checks if it's a number and stack it if possible
         fun_q_number();
-        isNumber = popData();
+        isNumber = popData().i32;
 
         if (isNumber) {
             fun_q_stack();
             continue;
         }
 
-        if (popData() != -1) {
+        if (popData().i32 != -1) {
             // Print ok if the line was not empty
-            if (*span->data > 1 && VALUE(blk) == 0) {
+            if (INT_VALUE(span) > 1 && INT_VALUE(blk) == 0) {
                 kdebug("ok\n");
             }
             // End of line
@@ -1425,26 +1389,26 @@ void fun_interpret(void) {
 void fun_expect(void) {
     int size = popData().i32;
     char *addr = popData().str;
-    if (*state->data) {
+    if (INT_VALUE(state)) {
         kdebug("compile: ");
     } else {
         kdebug("> ");
     }
-    readInput(addr, size);
+    readString(addr, size);
 
-    int len = strlen(addr);
-    *span->data = len;
+    int len = (int) strlen(addr);
+    *span->data = valueOf(len);
 }
 
 // QUERY (--)
 // Fill TIB buffer with user input
 void fun_query(void) {
-    pushData((int) tib);
-    pushData(TIB_SIZE);
+    pushData(valueOf(tib));
+    pushData(valueOf(TIB_SIZE));
     fun_expect();
-    *moreIn->data = 0;
-    *blk->data = 0;
-    *hashTib->data = *span->data;
+    INT_VALUE(moreIn) = 0;
+    INT_VALUE(blk) = 0;
+    INT_VALUE(hashTib) = INT_VALUE(span);
 }
 
 // FORTH (--)
@@ -1452,7 +1416,7 @@ void fun_query(void) {
 void fun_forth(void) {
 
     if (setjmp(onError)) {
-        *state->data = 0;
+        INT_VALUE(state) = 0;
     }
     //Read input
     fun_query();
@@ -1497,19 +1461,19 @@ void init(void) {
     extendDictionary(createWord("(FIND)", fun_int_find));
 
     // Constants
-    extendDictionary(createConstant("TIB", (int) tib));
-    extendDictionary(createConstant("CELL", 4));
-    extendDictionary(createConstant("SPACE", ' '));
+    extendDictionary(createConstant("TIB", valueOf(tib)));
+    extendDictionary(createConstant("CELL", valueOf(4)));
+    extendDictionary(createConstant("SPACE", valueOf(' ')));
 
     // Variables
-    moreIn = extendDictionary(createVariable(">IN", 0));
-    blk = extendDictionary(createVariable("BLK", 0));
-    span = extendDictionary(createVariable("SPAN", 0));
-    hashTib = extendDictionary(createVariable("#TIB", 0));
-    bl = extendDictionary(createVariable("BL", ' '));
-    base = extendDictionary(createVariable("BASE", 10));
-    state = extendDictionary(createVariable("STATE", 0));
-    currentBlock = extendDictionary(createVariable("#BLOCK", 0));
+    moreIn = extendDictionary(createVariable(">IN", valueOf(0)));
+    blk = extendDictionary(createVariable("BLK", valueOf(0)));
+    span = extendDictionary(createVariable("SPAN", valueOf(0)));
+    hashTib = extendDictionary(createVariable("#TIB", valueOf(0)));
+    bl = extendDictionary(createVariable("BL", valueOf(' ')));
+    base = extendDictionary(createVariable("BASE", valueOf(10)));
+    state = extendDictionary(createVariable("STATE", valueOf(0)));
+    currentBlock = extendDictionary(createVariable("#BLOCK", valueOf(0)));
 
     // Math
     extendDictionary(createWord("+", fun_plus));
@@ -1580,8 +1544,8 @@ void init(void) {
     extendDictionary(createWord("DROP", fun_drop));
 
     // Disk IO
-    fileWord = extendDictionary(createVariable("FILE", FS_NULL_INODE_REF));
-    folderWord = extendDictionary(createVariable("FOLDER", fs_getRoot()));
+    fileWord = extendDictionary(createVariable("FILE", valueOf(FS_NULL_INODE_REF)));
+    folderWord = extendDictionary(createVariable("FOLDER", valueOf(fs_getRoot())));
     extendDictionary(createWord("FLUSH", fun_flush));
     extendDictionary(createWord("WIPE", fun_wipe));
     extendDictionary(createWord("LOAD", fun_load));

@@ -19,7 +19,7 @@ Word *dictionary = NULL;
 
 
 String *createString(const String *src) {
-    String *res = allot(strlen(src) + 1);
+    String *res = allot((int) (strlen(src) + 1));
     strcpy(res, src);
     return res;
 }
@@ -91,10 +91,10 @@ Word *createImmediateWord(const char *name, Func fun) {
     return newWord(createString(name), fun, 1, 0);
 }
 
-Word *createVariable(const char *name, int data) {
+Word *createVariable(const char *name, Value data) {
     return newWord(createString(name), readVariableAddress, 0, 1, data);
 }
 
-Word *createConstant(const char *name, int data) {
+Word *createConstant(const char *name, Value data) {
     return newWord(createString(name), readVariableValue, 0, 1, data);
 }
